@@ -1,5 +1,13 @@
 <img src="https://i.ibb.co/NgXrn5Dm/b049439c-98f6-449d-a55d-18f40126989a.png" alt="b049439c-98f6-449d-a55d-18f40126989a" border="0">
-# Salenus AI
+
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-violet)
+![Built%20with](https://img.shields.io/badge/built%20with-Next.js%20%26%20Pi%20SDK-purple)
+![Pi Network](https://img.shields.io/badge/Pi%20Network-integrated-orange)
+[![Get Started](https://img.shields.io/badge/get%20started-now-brightgreen)](https://yourappurl.pi)
+
+
+Salenus AI
 
 ## Revolutionize Your Life with Salenus AI
 
