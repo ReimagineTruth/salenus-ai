@@ -42,7 +42,7 @@ Salenus AI
 2. **Create Your Profile**
    Set up your personal goals and Pi wallet connection.
 
-3. **Meet Gen**
+3. **Meet Salenus Chat**
    Start interacting with your Pi-powered AI coach for daily support and motivation.
 
 ---
