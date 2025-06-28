@@ -37,7 +37,7 @@ Salenus AI
 ## 🚀 Getting Started
 
 1. **Download & Install**
-   Get Salenus AI from the App Store or Google Play (coming soon).
+   Get Salenus AI from the Pi Browser (coming soon).
 
 2. **Create Your Profile**
    Set up your personal goals and Pi wallet connection.
