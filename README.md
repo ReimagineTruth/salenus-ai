@@ -1,73 +1,71 @@
-# Welcome to your Lovable project
+<img src="https://i.ibb.co/NgXrn5Dm/b049439c-98f6-449d-a55d-18f40126989a.png" alt="b049439c-98f6-449d-a55d-18f40126989a" border="0">
 
-## Project info
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-violet)
+![Built%20with](https://img.shields.io/badge/built%20with-Next.js%20%26%20Pi%20SDK-purple)
+![Pi Network](https://img.shields.io/badge/Pi%20Network-integrated-orange)
+[![Get Started](https://img.shields.io/badge/get%20started-now-brightgreen)](https://yourappurl.pi)
 
-**URL**: https://lovable.dev/projects/84240935-0717-4a3c-b56c-808e4c949ba6
 
-## How can I edit this code?
+Salenus AI
 
-There are several ways of editing your application.
+## Revolutionize Your Life with Salenus AI
 
-**Use Lovable**
+**Salenus AI** is your Pi-powered AI coaching assistant designed to help you break free from laziness and distractions. Whether you’re struggling to stay focused or want to build better habits, **Salenus AI**, your AI coach, is here to guide you every step of the way.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/84240935-0717-4a3c-b56c-808e4c949ba6) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## ✨ Key Features
 
-**Use your preferred IDE**
+* **Smart Task Management**
+  Organize your day with AI-powered scheduling and prioritization.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+* **Mood-Based Suggestions**
+  Get personalized recommendations and productivity nudges based on your mood and energy levels.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+* **Community Challenges**
+  Join motivating challenges with others to build discipline and consistency.
 
-Follow these steps:
+* **Progress Tracking**
+  Monitor your growth, habits, and milestones with intuitive dashboards.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+* **Pi Network Integration**
+  Unlock rewards and exclusive coaching features powered by the Pi Network.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 🚀 Getting Started
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+1. **Download & Install**
+   Get Salenus AI from the Pi Browser (coming soon).
 
-**Edit a file directly in GitHub**
+2. **Create Your Profile**
+   Set up your personal goals and Pi wallet connection.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. **Meet Salenus Chat**
+   Start interacting with your Pi-powered AI coach for daily support and motivation.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🔒 Privacy First
 
-## What technologies are used for this project?
+Your data is secure and never shared. You have full control over what you share with Gen.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 📌 License
 
-## How can I deploy this project?
+This project is licensed under the MIT License.
 
-Simply open [Lovable](https://lovable.dev/projects/84240935-0717-4a3c-b56c-808e4c949ba6) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+## 🤝 Contributing
 
-Yes, you can!
+We welcome contributions! Please open an issue or submit a pull request.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📞 Support
+
+Have questions or need help?
+Contact us at **[support@salenusai.com](mailto:support@salenusai.com)**
