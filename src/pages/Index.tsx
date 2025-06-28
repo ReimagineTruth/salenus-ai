@@ -12,7 +12,15 @@ import {
   CloudIcon, 
   CogIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  HeartIcon,
+  BellIcon,
+  CameraIcon,
+  CalendarIcon,
+  TrophyIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  ChartPieIcon
 } from '@heroicons/react/24/outline';
 
 const Index = () => {
@@ -20,43 +28,100 @@ const Index = () => {
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [recommendationResult, setRecommendationResult] = useState('');
 
-  const features = [
+  const basicFeatures = [
     {
       icon: <ChartBarIcon className="h-8 w-8" />,
-      title: "AI Habit Tracking",
-      description: "Track and improve your habits with intelligent insights powered by AI."
+      title: "Basic Habit Tracking",
+      description: "Track up to 5 daily habits with simple streak counters and basic progress visualization.",
+      planLevel: "Basic"
     },
     {
       icon: <ClipboardDocumentListIcon className="h-8 w-8" />,
-      title: "Task Management",
-      description: "Organize your tasks with smart reminders and prioritization."
+      title: "Simple Task Management",
+      description: "Create and manage up to 20 tasks with due dates and basic priority levels.",
+      planLevel: "Basic"
     },
     {
       icon: <UsersIcon className="h-8 w-8" />,
       title: "Community Challenges",
-      description: "Join global challenges to stay motivated and connected."
-    },
-    {
-      icon: <StarIcon className="h-8 w-8" />,
-      title: "Goal Setting",
-      description: "Define and track long-term goals with personalized milestones."
-    },
-    {
-      icon: <LightBulbIcon className="h-8 w-8" />,
-      title: "Daily Insights",
-      description: "Get AI-driven summaries of your progress and actionable tips."
+      description: "Join public community challenges and view basic leaderboards.",
+      planLevel: "Basic"
     },
     {
       icon: <CloudIcon className="h-8 w-8" />,
-      title: "Offline Mode",
-      description: "Use core features without an internet connection."
-    },
-    {
-      icon: <CogIcon className="h-8 w-8" />,
-      title: "Third-Party Integrations", 
-      description: "Sync with apps like Google Calendar and Todoist for seamless workflows."
+      title: "Cross-Platform Sync",
+      description: "Sync your data across all your devices with automatic cloud backup.",
+      planLevel: "Basic"
     }
   ];
+
+  const proFeatures = [
+    {
+      icon: <HeartIcon className="h-8 w-8" />,
+      title: "Mood-Based Suggestions",
+      description: "Get personalized task and habit recommendations based on your daily mood tracking.",
+      planLevel: "Pro"
+    },
+    {
+      icon: <BellIcon className="h-8 w-8" />,
+      title: "Smart Reminders",
+      description: "AI-powered reminders that adapt to your schedule and optimal productivity times.",
+      planLevel: "Pro"
+    },
+    {
+      icon: <StarIcon className="h-8 w-8" />,
+      title: "Advanced Goal Setting",
+      description: "Set complex goals with sub-milestones and automated progress tracking.",
+      planLevel: "Pro"
+    },
+    {
+      icon: <CameraIcon className="h-8 w-8" />,
+      title: "Progress Photos",
+      description: "Document your journey with progress photos and visual habit tracking.",
+      planLevel: "Pro"
+    },
+    {
+      icon: <TrophyIcon className="h-8 w-8" />,
+      title: "Custom Challenges",
+      description: "Create private challenges for friends and track group progress.",
+      planLevel: "Pro"
+    }
+  ];
+
+  const premiumFeatures = [
+    {
+      icon: <SparklesIcon className="h-8 w-8" />,
+      title: "AI Personal Coach",
+      description: "Get personalized coaching sessions and detailed performance analysis from our AI.",
+      planLevel: "Premium"
+    },
+    {
+      icon: <ChartPieIcon className="h-8 w-8" />,
+      title: "Advanced Analytics",
+      description: "Deep insights with trend analysis, correlation tracking, and predictive suggestions.",
+      planLevel: "Premium"
+    },
+    {
+      icon: <CalendarIcon className="h-8 w-8" />,
+      title: "Calendar Integration",
+      description: "Full integration with Google Calendar, Outlook, and Apple Calendar for seamless scheduling.",
+      planLevel: "Premium"
+    },
+    {
+      icon: <ShieldCheckIcon className="h-8 w-8" />,
+      title: "Priority Support",
+      description: "24/7 priority customer support with dedicated account manager for enterprise users.",
+      planLevel: "Premium"
+    },
+    {
+      icon: <LightBulbIcon className="h-8 w-8" />,
+      title: "Exclusive Features",
+      description: "Early access to beta features, exclusive workshops, and premium content library.",
+      planLevel: "Premium"
+    }
+  ];
+
+  const allFeatures = [...basicFeatures, ...proFeatures, ...premiumFeatures];
 
   const monthlyPlans = [
     {
@@ -64,23 +129,36 @@ const Index = () => {
       price: "3 Pi",
       usdPrice: "~ $1.76 USD",
       features: [
-        "AI Habit Tracking",
-        "Basic Task Management", 
-        "Community Challenges",
-        "Cross-Platform Sync",
-        "Pi Payments"
+        "Track up to 5 daily habits",
+        "Manage up to 20 tasks", 
+        "Join community challenges",
+        "Cross-platform sync",
+        "Basic progress tracking",
+        "Pi payments integration"
+      ],
+      limitations: [
+        "No mood tracking",
+        "No custom challenges",
+        "Basic analytics only"
       ]
     },
     {
       name: "Pro",
       price: "6 Pi",
-      usdPrice: "~ $3.52 USD",
+      usdPrice: "~ $3.52 USD", 
       features: [
         "Everything in Basic",
-        "Mood-Based Suggestions",
-        "Advanced Task Prioritization",
-        "Priority Support",
-        "Custom Challenge Creation"
+        "Unlimited habits & tasks",
+        "Mood-based AI suggestions",
+        "Smart adaptive reminders",
+        "Progress photos & journaling",
+        "Create custom challenges",
+        "Advanced goal milestones",
+        "Priority email support"
+      ],
+      limitations: [
+        "No personal AI coach",
+        "Limited analytics depth"
       ],
       popular: true
     },
@@ -89,11 +167,15 @@ const Index = () => {
       price: "12 Pi",
       usdPrice: "~ $7.04 USD",
       features: [
-        "Everything in Pro",
-        "Personalized AI Coaching",
-        "Advanced Analytics Dashboard",
-        "Exclusive Community Events",
-        "Early Access to New Features"
+        "Everything in Pro", 
+        "Personal AI coaching sessions",
+        "Advanced analytics dashboard",
+        "Full calendar integration",
+        "Predictive habit insights",
+        "Exclusive community events",
+        "Beta feature access",
+        "24/7 priority support",
+        "Premium content library"
       ]
     }
   ];
@@ -104,11 +186,17 @@ const Index = () => {
       price: "30 Pi",
       usdPrice: "~ $17.61 USD",
       features: [
-        "AI Habit Tracking",
-        "Basic Task Management",
-        "Community Challenges", 
-        "Cross-Platform Sync",
-        "Pi Payments"
+        "Track up to 5 daily habits",
+        "Manage up to 20 tasks",
+        "Join community challenges", 
+        "Cross-platform sync",
+        "Basic progress tracking",
+        "Pi payments integration"
+      ],
+      limitations: [
+        "No mood tracking",
+        "No custom challenges", 
+        "Basic analytics only"
       ]
     },
     {
@@ -117,23 +205,34 @@ const Index = () => {
       usdPrice: "~ $35.22 USD",
       features: [
         "Everything in Basic",
-        "Mood-Based Suggestions",
-        "Advanced Task Prioritization",
-        "Priority Support",
-        "Custom Challenge Creation"
+        "Unlimited habits & tasks",
+        "Mood-based AI suggestions",
+        "Smart adaptive reminders", 
+        "Progress photos & journaling",
+        "Create custom challenges",
+        "Advanced goal milestones",
+        "Priority email support"
+      ],
+      limitations: [
+        "No personal AI coach",
+        "Limited analytics depth"
       ],
       popular: true
     },
     {
       name: "Premium",
-      price: "120 Pi",
+      price: "120 Pi", 
       usdPrice: "~ $70.44 USD",
       features: [
         "Everything in Pro",
-        "Personalized AI Coaching",
-        "Advanced Analytics Dashboard",
-        "Exclusive Community Events",
-        "Early Access to New Features"
+        "Personal AI coaching sessions",
+        "Advanced analytics dashboard", 
+        "Full calendar integration",
+        "Predictive habit insights",
+        "Exclusive community events",
+        "Beta feature access",
+        "24/7 priority support",
+        "Premium content library" 
       ]
     }
   ];
@@ -141,18 +240,21 @@ const Index = () => {
   const testimonials = [
     {
       name: "Sarah K.",
-      text: "Gen helped me stay on track with my fitness goals. The AI insights are a game-changer!",
-      rating: 5
+      text: "The Pro plan's mood tracking helped me understand my productivity patterns. Game-changer!",
+      rating: 5,
+      plan: "Pro"
     },
     {
       name: "James L.",
-      text: "The community challenges keep me motivated. I've never been this productive!",
-      rating: 5
+      text: "Premium's AI coach feels like having a personal trainer for my entire life. Worth every Pi!",
+      rating: 5,
+      plan: "Premium"
     },
     {
       name: "Maria T.",
-      text: "Paying with Pi is so easy, and the app is worth every coin.",
-      rating: 5
+      text: "Started with Basic, upgraded to Pro after a week. The custom challenges are amazing!",
+      rating: 5,
+      plan: "Pro"
     }
   ];
 
@@ -163,19 +265,38 @@ const Index = () => {
       habitTracking: formData.has('habit-tracking'),
       taskManagement: formData.has('task-management'),
       moodSuggestions: formData.has('mood-suggestions'),
-      analytics: formData.has('analytics')
+      analytics: formData.has('analytics'),
+      coaching: formData.has('coaching'),
+      customChallenges: formData.has('custom-challenges')
     };
 
     let recommendation = 'Basic';
-    if (needs.analytics) {
+    let reasoning = '';
+
+    if (needs.coaching || needs.analytics) {
       recommendation = 'Premium';
-    } else if (needs.moodSuggestions) {
+      reasoning = 'You need advanced features like AI coaching and deep analytics.';
+    } else if (needs.moodSuggestions || needs.customChallenges) {
       recommendation = 'Pro';
+      reasoning = 'You want personalized features and community engagement.';
     } else if (needs.habitTracking || needs.taskManagement) {
       recommendation = 'Basic';
+      reasoning = 'You need core productivity features to get started.';
+    } else {
+      recommendation = 'Basic';
+      reasoning = 'Start with our Basic plan and upgrade as you grow!';
     }
 
-    setRecommendationResult(`We recommend the ${recommendation} plan. Check it out below!`);
+    setRecommendationResult(`We recommend the ${recommendation} plan. ${reasoning}`);
+  };
+
+  const getPlanBadgeColor = (planLevel: string) => {
+    switch (planLevel) {
+      case 'Basic': return 'bg-blue-100 text-blue-800';
+      case 'Pro': return 'bg-purple-100 text-purple-800';
+      case 'Premium': return 'bg-gold-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   useEffect(() => {
@@ -249,48 +370,102 @@ const Index = () => {
               Revolutionize Your Life with <span className="text-teal-300">Gen</span>
             </h1>
             <p className="text-xl sm:text-2xl mb-8 max-w-3xl mx-auto opacity-90">
-              Your AI-powered personal assistant to transform habits, manage tasks, and connect with a global community.
+              Your AI-powered personal assistant with plans designed for every productivity level.
             </p>
             <Button size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              Get Started
+              Choose Your Plan
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features by Plan Section */}
       <section id="features" className="py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 fade-in-element opacity-0 transition-all duration-1000">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Why Choose Gen?
+              Features Designed for Every Need
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Discover powerful features to boost your productivity and well-being.
+              From basic habit tracking to advanced AI coaching - choose the features that match your goals.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader>
-                  <div className="text-indigo-600 mb-4">
-                    {feature.icon}
-                  </div>
-                  <CardTitle className="text-xl font-semibold">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-gray-600">
-                    {feature.description}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Basic Plan Features */}
+          <div className="mb-16">
+            <div className="flex items-center justify-center mb-8">
+              <Badge className="bg-blue-600 text-white text-lg px-4 py-2">Basic Plan Features</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {basicFeatures.map((feature, index) => (
+                <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1 border-blue-200">
+                  <CardHeader>
+                    <div className="text-blue-600 mb-4">
+                      {feature.icon}
+                    </div>
+                    <CardTitle className="text-lg font-semibold">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-gray-600">
+                      {feature.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Pro Plan Features */}
+          <div className="mb-16">
+            <div className="flex items-center justify-center mb-8">
+              <Badge className="bg-purple-600 text-white text-lg px-4 py-2">Pro Plan Features</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {proFeatures.map((feature, index) => (
+                <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1 border-purple-200">
+                  <CardHeader>
+                    <div className="text-purple-600 mb-4">
+                      {feature.icon}
+                    </div>
+                    <CardTitle className="text-lg font-semibold">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-gray-600">
+                      {feature.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Premium Plan Features */}
+          <div>
+            <div className="flex items-center justify-center mb-8">
+              <Badge className="bg-yellow-600 text-white text-lg px-4 py-2">Premium Plan Features</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {premiumFeatures.map((feature, index) => (
+                <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1 border-yellow-200">
+                  <CardHeader>
+                    <div className="text-yellow-600 mb-4">
+                      {feature.icon}
+                    </div>
+                    <CardTitle className="text-lg font-semibold">{feature.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-gray-600">
+                      {feature.description}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
+      {/* Enhanced Pricing Section */}
       <section id="pricing" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 fade-in-element opacity-0 transition-all duration-1000">
@@ -301,7 +476,7 @@ const Index = () => {
               Unlock AI-powered productivity with plans starting at 3 Pi/month. Save up to 17% with yearly billing.
             </p>
 
-            {/* Recommendation Tool */}
+            {/* Enhanced Recommendation Tool */}
             <Card className="max-w-2xl mx-auto mb-12">
               <CardHeader>
                 <CardTitle className="text-indigo-600">Find Your Perfect Plan</CardTitle>
@@ -315,7 +490,7 @@ const Index = () => {
                     </label>
                     <label className="flex items-center space-x-2">
                       <input type="checkbox" name="task-management" className="rounded border-gray-300" />
-                      <span>Simple task management</span>
+                      <span>Task management</span>
                     </label>
                     <label className="flex items-center space-x-2">
                       <input type="checkbox" name="mood-suggestions" className="rounded border-gray-300" />
@@ -323,7 +498,15 @@ const Index = () => {
                     </label>
                     <label className="flex items-center space-x-2">
                       <input type="checkbox" name="analytics" className="rounded border-gray-300" />
-                      <span>In-depth analytics</span>
+                      <span>Advanced analytics</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" name="coaching" className="rounded border-gray-300" />
+                      <span>AI personal coaching</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" name="custom-challenges" className="rounded border-gray-300" />
+                      <span>Custom challenges</span>
                     </label>
                   </div>
                   <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
@@ -363,7 +546,7 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Pricing Cards */}
+          {/* Enhanced Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {(selectedPlan === 'monthly' ? monthlyPlans : yearlyPlans).map((plan, index) => (
               <Card key={index} className={`fade-in-element opacity-0 transition-all duration-1000 relative hover:shadow-xl hover:-translate-y-2 ${plan.popular ? 'ring-2 ring-indigo-600 scale-105' : ''}`}>
@@ -383,6 +566,12 @@ const Index = () => {
                       <li key={featureIndex} className="flex items-center space-x-2">
                         <CheckIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
                         <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                    {plan.limitations && plan.limitations.map((limitation, limitIndex) => (
+                      <li key={limitIndex} className="flex items-center space-x-2 opacity-60">
+                        <XMarkIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+                        <span className="text-gray-500 line-through">{limitation}</span>
                       </li>
                     ))}
                   </ul>
@@ -454,7 +643,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* Enhanced Testimonials Section */}
       <section id="testimonials" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 fade-in-element opacity-0 transition-all duration-1000">
@@ -462,7 +651,7 @@ const Index = () => {
               What Our Users Say
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Hear from people who've transformed their lives with Gen.
+              Hear from people who've transformed their lives with Gen across all plan levels.
             </p>
           </div>
 
@@ -470,10 +659,15 @@ const Index = () => {
             {testimonials.map((testimonial, index) => (
               <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1">
                 <CardContent className="pt-6">
-                  <div className="flex mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <StarIcon key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                    ))}
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex">
+                      {[...Array(testimonial.rating)].map((_, i) => (
+                        <StarIcon key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                      ))}
+                    </div>
+                    <Badge className={`${testimonial.plan === 'Basic' ? 'bg-blue-100 text-blue-800' : testimonial.plan === 'Pro' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {testimonial.plan}
+                    </Badge>
                   </div>
                   <p className="text-gray-700 mb-4 italic">"{testimonial.text}"</p>
                   <p className="font-semibold text-gray-900">– {testimonial.name}</p>
