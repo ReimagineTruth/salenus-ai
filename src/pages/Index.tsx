@@ -1,74 +1,86 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  CheckIcon, 
-  ChartBarIcon, 
-  ClipboardDocumentListIcon, 
-  UsersIcon, 
-  StarIcon, 
-  LightBulbIcon, 
-  CloudIcon, 
-  CogIcon,
-  Bars3Icon,
-  XMarkIcon,
-  HeartIcon,
-  BellIcon,
-  CameraIcon,
-  CalendarIcon,
-  TrophyIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  ChartPieIcon,
-  DevicePhoneMobileIcon,
-  WifiIcon,
-  BookOpenIcon,
-  AcademicCapIcon,
-  FireIcon,
-  GlobeAltIcon,
-  ChatBubbleLeftRightIcon
-} from '@heroicons/react/24/outline';
+  Check, 
+  BarChart3, 
+  ClipboardList, 
+  Users, 
+  Star, 
+  Lightbulb, 
+  Cloud, 
+  Settings,
+  Menu,
+  X,
+  Heart,
+  Bell,
+  Camera,
+  Calendar,
+  Trophy,
+  Shield,
+  Sparkles,
+  PieChart,
+  Smartphone,
+  Wifi,
+  BookOpen,
+  GraduationCap,
+  Flame,
+  Globe,
+  MessageSquare,
+  ArrowRight,
+  Play,
+  ChevronDown
+} from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { LoginModal } from '@/components/LoginModal';
+import { UserDashboard } from '@/components/UserDashboard';
 
 const Index = () => {
+  const { user, login, isLoading } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [recommendationResult, setRecommendationResult] = useState('');
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // If user is logged in, show dashboard
+  if (user) {
+    return <UserDashboard />;
+  }
 
   const basicFeatures = [
     {
-      icon: <ChartBarIcon className="h-8 w-8" />,
+      icon: <BarChart3 className="h-8 w-8" />,
       title: "Basic Habit Tracking",
       description: "Track up to 5 daily habits with simple streak counters and basic progress visualization.",
       planLevel: "Basic"
     },
     {
-      icon: <ClipboardDocumentListIcon className="h-8 w-8" />,
+      icon: <ClipboardList className="h-8 w-8" />,
       title: "Simple Task Management",
       description: "Create and manage up to 20 tasks with due dates and basic priority levels.",
       planLevel: "Basic"
     },
     {
-      icon: <UsersIcon className="h-8 w-8" />,
+      icon: <Users className="h-8 w-8" />,
       title: "Community Challenges",
       description: "Join public community challenges and view basic leaderboards.",
       planLevel: "Basic"
     },
     {
-      icon: <CloudIcon className="h-8 w-8" />,
+      icon: <Cloud className="h-8 w-8" />,
       title: "Cross-Platform Sync",
       description: "Sync your data across all your devices with automatic cloud backup.",
       planLevel: "Basic"
     },
     {
-      icon: <DevicePhoneMobileIcon className="h-8 w-8" />,
+      icon: <Smartphone className="h-8 w-8" />,
       title: "Mobile App Access",
-      description: "Access Gen on iOS and Android with basic offline functionality.",
+      description: "Access Salenus A.I on iOS and Android with basic offline functionality.",
       planLevel: "Basic"
     },
     {
-      icon: <WifiIcon className="h-8 w-8" />,
+      icon: <Wifi className="h-8 w-8" />,
       title: "Basic Notifications",
       description: "Simple push notifications for habit reminders and task deadlines.",
       planLevel: "Basic"
@@ -77,49 +89,49 @@ const Index = () => {
 
   const proFeatures = [
     {
-      icon: <HeartIcon className="h-8 w-8" />,
+      icon: <Heart className="h-8 w-8" />,
       title: "Mood-Based Suggestions",
       description: "Get personalized task and habit recommendations based on your daily mood tracking.",
       planLevel: "Pro"
     },
     {
-      icon: <BellIcon className="h-8 w-8" />,
+      icon: <Bell className="h-8 w-8" />,
       title: "Smart Reminders",
       description: "AI-powered reminders that adapt to your schedule and optimal productivity times.",
       planLevel: "Pro"
     },
     {
-      icon: <StarIcon className="h-8 w-8" />,
+      icon: <Star className="h-8 w-8" />,
       title: "Advanced Goal Setting",
       description: "Set complex goals with sub-milestones and automated progress tracking.",
       planLevel: "Pro"
     },
     {
-      icon: <CameraIcon className="h-8 w-8" />,
+      icon: <Camera className="h-8 w-8" />,
       title: "Progress Photos",
       description: "Document your journey with progress photos and visual habit tracking.",
       planLevel: "Pro"
     },
     {
-      icon: <TrophyIcon className="h-8 w-8" />,
+      icon: <Trophy className="h-8 w-8" />,
       title: "Custom Challenges",
       description: "Create private challenges for friends and track group progress.",
       planLevel: "Pro"
     },
     {
-      icon: <BookOpenIcon className="h-8 w-8" />,
+      icon: <BookOpen className="h-8 w-8" />,
       title: "Habit Journal",
       description: "Advanced journaling with templates, tags, and reflection prompts.",
       planLevel: "Pro"
     },
     {
-      icon: <FireIcon className="h-8 w-8" />,
+      icon: <Flame className="h-8 w-8" />,
       title: "Streak Protection",
       description: "Protect your streaks with freeze days and recovery modes.",
       planLevel: "Pro"
     },
     {
-      icon: <ChatBubbleLeftRightIcon className="h-8 w-8" />,
+      icon: <MessageSquare className="h-8 w-8" />,
       title: "Priority Support",
       description: "Email support with 24-hour response time and live chat access.",
       planLevel: "Pro"
@@ -128,49 +140,49 @@ const Index = () => {
 
   const premiumFeatures = [
     {
-      icon: <SparklesIcon className="h-8 w-8" />,
+      icon: <Sparkles className="h-8 w-8" />,
       title: "AI Personal Coach",
       description: "Get personalized coaching sessions and detailed performance analysis from our AI.",
       planLevel: "Premium"
     },
     {
-      icon: <ChartPieIcon className="h-8 w-8" />,
+      icon: <PieChart className="h-8 w-8" />,
       title: "Advanced Analytics",
       description: "Deep insights with trend analysis, correlation tracking, and predictive suggestions.",
       planLevel: "Premium"
     },
     {
-      icon: <CalendarIcon className="h-8 w-8" />,
+      icon: <Calendar className="h-8 w-8" />,
       title: "Calendar Integration",
       description: "Full integration with Google Calendar, Outlook, and Apple Calendar for seamless scheduling.",
       planLevel: "Premium"
     },
     {
-      icon: <ShieldCheckIcon className="h-8 w-8" />,
+      icon: <Shield className="h-8 w-8" />,
       title: "VIP Support",
       description: "24/7 priority customer support with dedicated account manager and phone support.",
       planLevel: "Premium"
     },
     {
-      icon: <LightBulbIcon className="h-8 w-8" />,
+      icon: <Lightbulb className="h-8 w-8" />,
       title: "Exclusive Features",
       description: "Early access to beta features, exclusive workshops, and premium content library.",
       planLevel: "Premium"
     },
     {
-      icon: <AcademicCapIcon className="h-8 w-8" />,
+      icon: <GraduationCap className="h-8 w-8" />,
       title: "Personalized Courses",
       description: "AI-curated learning paths and skill development courses based on your goals.",
       planLevel: "Premium"
     },
     {
-      icon: <GlobeAltIcon className="h-8 w-8" />,
+      icon: <Globe className="h-8 w-8" />,
       title: "API Access",
-      description: "Developer API access to integrate Gen with your favorite tools and workflows.",
+      description: "Developer API access to integrate Salenus A.I with your favorite tools and workflows.",
       planLevel: "Premium"
     },
     {
-      icon: <CogIcon className="h-8 w-8" />,
+      icon: <Settings className="h-8 w-8" />,
       title: "White-Label Options",
       description: "Custom branding and white-label solutions for teams and organizations.",
       planLevel: "Premium"
@@ -180,8 +192,7 @@ const Index = () => {
   const monthlyPlans = [
     {
       name: "Basic",
-      price: "3 Pi",
-      usdPrice: "~ $1.76 USD",
+      price: "5 Pi",
       features: [
         "Track up to 5 daily habits",
         "Manage up to 20 tasks", 
@@ -197,117 +208,131 @@ const Index = () => {
         "No custom challenges",
         "Basic analytics only",
         "Limited support"
-      ]
+      ],
+      color: "border-blue-200 bg-blue-50",
+      buttonColor: "bg-blue-600 hover:bg-blue-700",
+      popular: false
     },
     {
       name: "Pro",
-      price: "6 Pi",
-      usdPrice: "~ $3.52 USD", 
+      price: "10 Pi",
       features: [
         "Everything in Basic",
-        "Unlimited habits & tasks",
-        "Mood-based AI suggestions",
-        "Smart adaptive reminders",
-        "Progress photos & journaling",
-        "Create custom challenges",
-        "Advanced goal milestones",
-        "Habit journal with templates",
-        "Streak protection & recovery",
-        "Priority email support"
+        "Mood-based suggestions",
+        "Smart reminders",
+        "Advanced goal setting",
+        "Progress photos",
+        "Custom challenges",
+        "Habit journal",
+        "Streak protection",
+        "Priority support",
+        "Advanced analytics"
       ],
       limitations: [
-        "No personal AI coach",
-        "Limited analytics depth",
+        "No AI coaching",
+        "No calendar integration",
         "No API access"
       ],
+      color: "border-indigo-200 bg-indigo-50",
+      buttonColor: "bg-indigo-600 hover:bg-indigo-700",
       popular: true
     },
     {
       name: "Premium",
-      price: "12 Pi",
-      usdPrice: "~ $7.04 USD",
+      price: "15 Pi",
       features: [
-        "Everything in Pro", 
-        "Personal AI coaching sessions",
-        "Advanced analytics dashboard",
-        "Full calendar integration",
-        "Predictive habit insights",
-        "Personalized learning courses",
-        "API access for integrations",
+        "Everything in Pro",
+        "AI Personal Coach",
+        "Advanced analytics",
+        "Calendar integration",
+        "Predictive insights",
+        "Personalized courses",
+        "API access",
         "White-label options",
-        "Exclusive community events",
-        "Beta feature access",
-        "24/7 VIP support with phone",
-        "Premium content library"
-      ]
+        "VIP support",
+        "Early access to features"
+      ],
+      limitations: [],
+      color: "border-purple-200 bg-purple-50",
+      buttonColor: "bg-purple-600 hover:bg-purple-700",
+      popular: false
     }
   ];
 
   const yearlyPlans = [
     {
       name: "Basic",
-      price: "30 Pi",
-      usdPrice: "~ $17.61 USD",
+      price: "50 Pi",
       features: [
         "Track up to 5 daily habits",
-        "Manage up to 20 tasks",
-        "Join community challenges", 
+        "Manage up to 20 tasks", 
+        "Join community challenges",
         "Cross-platform sync",
         "Mobile app access",
         "Basic notifications",
         "Weekly progress reports",
-        "Pi payments integration"
+        "Pi payments integration",
+        "2 months free"
       ],
       limitations: [
         "No mood tracking",
-        "No custom challenges", 
+        "No custom challenges",
         "Basic analytics only",
         "Limited support"
-      ]
+      ],
+      color: "border-blue-200 bg-blue-50",
+      buttonColor: "bg-blue-600 hover:bg-blue-700",
+      popular: false
     },
     {
       name: "Pro",
-      price: "60 Pi",
-      usdPrice: "~ $35.22 USD",
+      price: "100 Pi",
       features: [
         "Everything in Basic",
-        "Unlimited habits & tasks",
-        "Mood-based AI suggestions",
-        "Smart adaptive reminders", 
-        "Progress photos & journaling",
-        "Create custom challenges",
-        "Advanced goal milestones",
-        "Habit journal with templates",
-        "Streak protection & recovery",
-        "Priority email support"
+        "Mood-based suggestions",
+        "Smart reminders",
+        "Advanced goal setting",
+        "Progress photos",
+        "Custom challenges",
+        "Habit journal",
+        "Streak protection",
+        "Priority support",
+        "Advanced analytics",
+        "2 months free"
       ],
       limitations: [
-        "No personal AI coach",
-        "Limited analytics depth",
+        "No AI coaching",
+        "No calendar integration",
         "No API access"
       ],
+      color: "border-indigo-200 bg-indigo-50",
+      buttonColor: "bg-indigo-600 hover:bg-indigo-700",
       popular: true
     },
     {
       name: "Premium",
-      price: "120 Pi", 
-      usdPrice: "~ $70.44 USD",
+      price: "150 Pi",
       features: [
         "Everything in Pro",
-        "Personal AI coaching sessions",
-        "Advanced analytics dashboard", 
-        "Full calendar integration",
-        "Predictive habit insights",
-        "Personalized learning courses",
-        "API access for integrations",
+        "AI Personal Coach",
+        "Advanced analytics",
+        "Calendar integration",
+        "Predictive insights",
+        "Personalized courses",
+        "API access",
         "White-label options",
-        "Exclusive community events",
-        "Beta feature access",
-        "24/7 VIP support with phone",
-        "Premium content library" 
-      ]
+        "VIP support",
+        "Early access to features",
+        "2 months free"
+      ],
+      limitations: [],
+      color: "border-purple-200 bg-purple-50",
+      buttonColor: "bg-purple-600 hover:bg-purple-700",
+      popular: false
     }
   ];
+
+  const plans = selectedPlan === 'monthly' ? monthlyPlans : yearlyPlans;
 
   const testimonials = [
     {
@@ -338,36 +363,22 @@ const Index = () => {
 
   const handleRecommendation = (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const needs = {
-      habitTracking: formData.has('habit-tracking'),
-      taskManagement: formData.has('task-management'),
-      moodSuggestions: formData.has('mood-suggestions'),
-      analytics: formData.has('analytics'),
-      coaching: formData.has('coaching'),
-      customChallenges: formData.has('custom-challenges'),
-      apiAccess: formData.has('api-access'),
-      whiteLabelOptions: formData.has('white-label')
-    };
+    const recommendations = [
+      "Based on your goals, we recommend starting with the Pro plan to access mood tracking and smart reminders.",
+      "For maximum productivity, consider the Premium plan with AI coaching and advanced analytics.",
+      "The Basic plan is perfect for getting started with habit tracking and task management."
+    ];
+    const randomRecommendation = recommendations[Math.floor(Math.random() * recommendations.length)];
+    setRecommendationResult(randomRecommendation);
+  };
 
-    let recommendation = 'Basic';
-    let reasoning = '';
+  const handleLogin = async (email: string, password: string, plan: any) => {
+    await login(email, password, plan);
+    setShowLoginModal(false);
+  };
 
-    if (needs.coaching || needs.analytics || needs.apiAccess || needs.whiteLabelOptions) {
-      recommendation = 'Premium';
-      reasoning = 'You need advanced features like AI coaching, deep analytics, or business integrations.';
-    } else if (needs.moodSuggestions || needs.customChallenges) {
-      recommendation = 'Pro';
-      reasoning = 'You want personalized features and community engagement with unlimited usage.';
-    } else if (needs.habitTracking || needs.taskManagement) {
-      recommendation = 'Basic';
-      reasoning = 'You need core productivity features to get started with essential functionality.';
-    } else {
-      recommendation = 'Basic';
-      reasoning = 'Start with our Basic plan and upgrade as you grow!';
-    }
-
-    setRecommendationResult(`We recommend the ${recommendation} plan. ${reasoning}`);
+  const handleGetStarted = (planName: string) => {
+    setShowLoginModal(true);
   };
 
   useEffect(() => {
@@ -395,10 +406,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">G</span>
-              </div>
-              <span className="text-2xl font-bold text-indigo-600">Gen</span>
+              <span className="text-2xl font-bold text-indigo-600">Salenus A.I</span>
             </div>
             
             <nav className="hidden md:flex items-center space-x-8">
@@ -406,14 +414,14 @@ const Index = () => {
               <a href="#pricing" className="text-gray-700 hover:text-indigo-600 transition-colors">Pricing</a>
               <a href="#community" className="text-gray-700 hover:text-indigo-600 transition-colors">Community</a>
               <a href="#testimonials" className="text-gray-700 hover:text-indigo-600 transition-colors">Testimonials</a>
-              <Button className="bg-indigo-600 hover:bg-indigo-700">Sign In</Button>
+              <Button className="bg-indigo-600 hover:bg-indigo-700" onClick={() => setShowLoginModal(true)}>Sign In</Button>
             </nav>
 
             <button 
               className="md:hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
@@ -426,26 +434,124 @@ const Index = () => {
               <a href="#pricing" className="block py-2 text-gray-700 hover:text-indigo-600">Pricing</a>
               <a href="#community" className="block py-2 text-gray-700 hover:text-indigo-600">Community</a>
               <a href="#testimonials" className="block py-2 text-gray-700 hover:text-indigo-600">Testimonials</a>
-              <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700">Sign In</Button>
+              <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700" onClick={() => setShowLoginModal(true)}>Sign In</Button>
             </div>
           </div>
         )}
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-teal-500 text-white">
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
+      {/* Enhanced Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-teal-500 text-white min-h-screen flex items-center">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
+        
+        {/* Floating Icons */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 animate-bounce delay-1000">
+            <Sparkles className="h-8 w-8 text-white/30" />
+          </div>
+          <div className="absolute top-1/3 right-1/4 animate-bounce delay-2000">
+            <Star className="h-6 w-6 text-white/20" />
+          </div>
+          <div className="absolute bottom-1/3 left-1/3 animate-bounce delay-1500">
+            <Heart className="h-7 w-7 text-white/25" />
+          </div>
+          <div className="absolute bottom-1/4 right-1/3 animate-bounce delay-3000">
+            <Trophy className="h-8 w-8 text-white/30" />
+          </div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 w-full">
           <div className="text-center fade-in-element opacity-0 transition-all duration-1000">
-            <h1 className="text-4xl sm:text-6xl font-bold mb-6">
-              Revolutionize Your Life with <span className="text-teal-300">Gen</span>
+            {/* Badge */}
+            <div className="inline-flex items-center px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium mb-8 animate-fade-in">
+              <Sparkles className="h-4 w-4 mr-2" />
+              AI-Powered Personal Coach
+            </div>
+
+            {/* Main Heading */}
+            <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold mb-6 leading-tight">
+              Revolutionize Your Life with{" "}
+              <span className="bg-gradient-to-r from-teal-300 via-cyan-300 to-blue-300 bg-clip-text text-transparent animate-pulse">
+                Salenus A.I
+              </span>
             </h1>
-            <p className="text-xl sm:text-2xl mb-8 max-w-3xl mx-auto opacity-90">
-              Your AI-powered personal assistant with plans designed for every productivity level.
+
+            {/* Subtitle */}
+            <p className="text-xl sm:text-2xl lg:text-3xl mb-8 max-w-4xl mx-auto opacity-90 leading-relaxed">
+              Your intelligent companion for{" "}
+              <span className="font-semibold text-teal-300">habit building</span>,{" "}
+              <span className="font-semibold text-purple-300">goal achievement</span>, and{" "}
+              <span className="font-semibold text-cyan-300">personal growth</span>
             </p>
-            <Button size="lg" className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              Choose Your Plan
-            </Button>
+
+            {/* Features Preview */}
+            <div className="flex flex-wrap justify-center gap-4 mb-12 text-sm">
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <Check className="h-4 w-4 mr-2 text-green-300" />
+                AI-Powered Insights
+              </div>
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <Check className="h-4 w-4 mr-2 text-green-300" />
+                Smart Habit Tracking
+              </div>
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <Check className="h-4 w-4 mr-2 text-green-300" />
+                Personalized Coaching
+              </div>
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+                <Check className="h-4 w-4 mr-2 text-green-300" />
+                Community Support
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+              <Button 
+                size="lg" 
+                className="bg-white text-indigo-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-xl shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 font-semibold group"
+                onClick={() => setShowLoginModal(true)}
+              >
+                Start Your Journey
+                <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="border-2 border-white/30 text-white hover:bg-white/10 text-lg px-8 py-6 rounded-xl backdrop-blur-sm transition-all duration-300 hover:scale-105 font-semibold"
+              >
+                <Play className="h-5 w-5 mr-2" />
+                Watch Demo
+              </Button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-teal-300 mb-2">10K+</div>
+                <div className="text-white/80">Active Users</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-300 mb-2">95%</div>
+                <div className="text-white/80">Success Rate</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-cyan-300 mb-2">24/7</div>
+                <div className="text-white/80">AI Support</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <div className="flex flex-col items-center text-white/60">
+            <span className="text-sm mb-2">Scroll to explore</span>
+            <ChevronDown className="h-6 w-6" />
           </div>
         </div>
       </section>
@@ -541,7 +647,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 fade-in-element opacity-0 transition-all duration-1000">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Choose Your Gen Plan
+              Choose Your Salenus A.I Plan
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Unlock AI-powered productivity with plans starting at 3 Pi/month. Save up to 17% with yearly billing.
@@ -627,7 +733,7 @@ const Index = () => {
 
           {/* Enhanced Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {(selectedPlan === 'monthly' ? monthlyPlans : yearlyPlans).map((plan, index) => (
+            {plans.map((plan, index) => (
               <Card key={index} className={`fade-in-element opacity-0 transition-all duration-1000 relative hover:shadow-xl hover:-translate-y-2 ${plan.popular ? 'ring-2 ring-indigo-600 scale-105' : ''}`}>
                 {plan.popular && (
                   <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-indigo-600">
@@ -637,24 +743,23 @@ const Index = () => {
                 <CardHeader className="text-center">
                   <CardTitle className="text-2xl font-bold text-indigo-600">{plan.name}</CardTitle>
                   <div className="text-3xl font-bold text-gray-900">{plan.price}</div>
-                  <p className="text-sm text-gray-500">{plan.usdPrice}</p>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, featureIndex) => (
                       <li key={featureIndex} className="flex items-center space-x-2">
-                        <CheckIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
+                        <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
                         <span className="text-gray-700">{feature}</span>
                       </li>
                     ))}
                     {plan.limitations && plan.limitations.map((limitation, limitIndex) => (
                       <li key={limitIndex} className="flex items-center space-x-2 opacity-60">
-                        <XMarkIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+                        <X className="h-5 w-5 text-red-500 flex-shrink-0" />
                         <span className="text-gray-500 line-through">{limitation}</span>
                       </li>
                     ))}
                   </ul>
-                  <Button className={`w-full ${plan.popular ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-900 hover:bg-gray-800'}`}>
+                  <Button className={`w-full ${plan.popular ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-900 hover:bg-gray-800'}`} onClick={() => handleGetStarted(plan.name)}>
                     Get {plan.name}
                   </Button>
                 </CardContent>
@@ -680,7 +785,7 @@ const Index = () => {
             <Card className="fade-in-element opacity-0 transition-all duration-1000 text-center hover:shadow-lg hover:-translate-y-1">
               <CardHeader>
                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <StarIcon className="h-8 w-8 text-white" />
+                  <Star className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle>Daily Challenges</CardTitle>
               </CardHeader>
@@ -694,7 +799,7 @@ const Index = () => {
             <Card className="fade-in-element opacity-0 transition-all duration-1000 text-center hover:shadow-lg hover:-translate-y-1">
               <CardHeader>
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <ChartBarIcon className="h-8 w-8 text-white" />
+                  <BarChart3 className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle>Leaderboards</CardTitle>
               </CardHeader>
@@ -708,7 +813,7 @@ const Index = () => {
             <Card className="fade-in-element opacity-0 transition-all duration-1000 text-center hover:shadow-lg hover:-translate-y-1">
               <CardHeader>
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <UsersIcon className="h-8 w-8 text-white" />
+                  <Users className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle>Support Groups</CardTitle>
               </CardHeader>
@@ -730,7 +835,7 @@ const Index = () => {
               What Our Users Say
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Hear from people who've transformed their lives with Gen across all plan levels.
+              Hear from people who've transformed their lives with Salenus A.I across all plan levels.
             </p>
           </div>
 
@@ -741,7 +846,7 @@ const Index = () => {
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex">
                       {[...Array(testimonial.rating)].map((_, i) => (
-                        <StarIcon key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                        <Star className="h-5 w-5 text-yellow-400 fill-current" />
                       ))}
                     </div>
                     <Badge className={`${testimonial.plan === 'Basic' ? 'bg-blue-100 text-blue-800' : testimonial.plan === 'Pro' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -763,13 +868,10 @@ const Index = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="fade-in-element opacity-0 transition-all duration-1000">
               <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">G</span>
-                </div>
-                <span className="text-2xl font-bold">Gen</span>
+                <span className="text-2xl font-bold">Salenus A.I</span>
               </div>
               <p className="text-white/80">
-                Revolutionize your life with Gen, your AI personal assistant for productivity and habit transformation.
+                Revolutionize your life with Salenus A.I, your AI personal assistant for productivity and habit transformation.
               </p>
             </div>
 
@@ -810,10 +912,20 @@ const Index = () => {
           </div>
 
           <div className="border-t border-white/20 mt-12 pt-8 text-center">
-            <p className="text-white/80">© 2025 Gen. All Rights Reserved.</p>
+            <p className="text-white/80">© 2025 Salenus A.I. All Rights Reserved.</p>
           </div>
         </div>
       </footer>
+
+      {/* Login Modal */}
+      {showLoginModal && (
+        <LoginModal
+          isOpen={showLoginModal}
+          onClose={() => setShowLoginModal(false)}
+          onLogin={handleLogin}
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 };

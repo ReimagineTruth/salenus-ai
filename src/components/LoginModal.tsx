@@ -1,0 +1,158 @@
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { X, Check, Lock } from 'lucide-react';
+import { UserPlan } from '@/hooks/useAuth';
+
+interface LoginModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onLogin: (email: string, password: string, plan: UserPlan) => Promise<void>;
+  isLoading: boolean;
+}
+
+const plans = [
+  {
+    name: 'Basic' as UserPlan,
+    price: '5 Pi',
+    features: ['Habit Tracking', 'Task Management', 'Community Challenges', 'Mobile App'],
+    color: 'bg-blue-600'
+  },
+  {
+    name: 'Pro' as UserPlan,
+    price: '10 Pi',
+    features: ['Everything in Basic', 'Mood Tracking', 'Smart Reminders', 'Custom Challenges'],
+    color: 'bg-indigo-600'
+  },
+  {
+    name: 'Premium' as UserPlan,
+    price: '15 Pi',
+    features: ['Everything in Pro', 'AI Coaching', 'Advanced Analytics', 'API Access'],
+    color: 'bg-purple-600'
+  }
+];
+
+export const LoginModal: React.FC<LoginModalProps> = ({
+  isOpen,
+  onClose,
+  onLogin,
+  isLoading
+}) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<UserPlan>('Basic');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    
+    await onLogin(email, password, selectedPlan);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-2xl font-bold text-slate-800">Sign In to Salenus A.I</CardTitle>
+            <CardDescription>Choose your plan and start your journey</CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          {/* Plan Selection */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold">Select Your Plan</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {plans.map((plan) => (
+                <div
+                  key={plan.name}
+                  className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    selectedPlan === plan.name
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setSelectedPlan(plan.name)}
+                >
+                  {selectedPlan === plan.name && (
+                    <div className="absolute -top-2 -right-2">
+                      <div className="bg-blue-500 text-white rounded-full p-1">
+                        <Check className="h-3 w-3" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge className={plan.color}>{plan.name}</Badge>
+                      <span className="font-bold text-lg">{plan.price}</span>
+                    </div>
+                    
+                    <ul className="space-y-1 text-sm">
+                      {plan.features.map((feature, index) => (
+                        <li key={index} className="flex items-center text-slate-600">
+                          <Check className="h-3 w-3 mr-2 text-green-500 flex-shrink-0" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center space-x-2 text-sm text-blue-700">
+                <Lock className="h-4 w-4" />
+                <span>Mock Authentication - Any email/password will work</span>
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full bg-slate-800 hover:bg-slate-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing In...' : `Sign In with ${selectedPlan} Plan`}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}; 
