@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import {
   ChartBarIcon, 
   ClipboardDocumentListIcon, 
   UsersIcon, 
-  TargetIcon, 
+  BullseyeIcon, 
   LightBulbIcon, 
   CloudIcon, 
   CogIcon,
@@ -39,7 +38,7 @@ const Index = () => {
       description: "Join global challenges to stay motivated and connected."
     },
     {
-      icon: <TargetIcon className="h-8 w-8" />,
+      icon: <BullseyeIcon className="h-8 w-8" />,
       title: "Goal Setting",
       description: "Define and track long-term goals with personalized milestones."
     },
@@ -414,7 +413,7 @@ const Index = () => {
             <Card className="fade-in-element opacity-0 transition-all duration-1000 text-center hover:shadow-lg hover:-translate-y-1">
               <CardHeader>
                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <TargetIcon className="h-8 w-8 text-white" />
+                  <BullseyeIcon className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle>Daily Challenges</CardTitle>
               </CardHeader>
