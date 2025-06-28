@@ -11,7 +11,7 @@ Salenus AI
 
 ## Revolutionize Your Life with Salenus AI
 
-**Salenus AI** is your Pi-powered AI coaching assistant designed to help you break free from laziness and distractions. Whether you’re struggling to stay focused or want to build better habits, **Gen**, your AI coach, is here to guide you every step of the way.
+**Salenus AI** is your Pi-powered AI coaching assistant designed to help you break free from laziness and distractions. Whether you’re struggling to stay focused or want to build better habits, **Salenus AI**, your AI coach, is here to guide you every step of the way.
 
 ---
 
