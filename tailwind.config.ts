@@ -18,6 +18,28 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: [
+					'Inter',
+					'ui-sans-serif',
+					'system-ui',
+					'Segoe UI',
+					'Roboto',
+					'Helvetica Neue',
+					'Arial',
+					'sans-serif',
+				],
+				heading: [
+					'Inter',
+					'ui-sans-serif',
+					'system-ui',
+					'Segoe UI',
+					'Roboto',
+					'Helvetica Neue',
+					'Arial',
+					'sans-serif',
+				],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -42,7 +64,10 @@ export default {
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
+					foreground: 'hsl(var(--accent-foreground))',
+					yellow: '#ffe066',
+					green: '#4ade80',
+					pink: '#f472b6',
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
@@ -61,7 +86,29 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				navy: {
+					900: '#0a2540',
+					800: '#113264',
+					700: '#1b3a5b',
+				},
+				blue: {
+					600: '#2970ff',
+					500: '#409fff',
+					400: '#7ab8ff',
+				},
+				gray: {
+					900: '#1a1a1a',
+					800: '#333',
+					700: '#4f4f4f',
+					600: '#828282',
+					500: '#bdbdbd',
+					400: '#e0e0e0',
+					100: '#f7fafc',
+					50: '#f9fafb',
+				},
+				white: '#fff',
+				black: '#000',
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -107,7 +154,11 @@ export default {
 				'professional-lg': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
 				'professional-xl': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
 				'3xl': '0 35px 60px -12px rgba(0, 0, 0, 0.25)'
-			}
+			},
+			backgroundImage: {
+				'gradient-radial': 'radial-gradient(ellipse at center, var(--tw-gradient-stops))',
+				'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

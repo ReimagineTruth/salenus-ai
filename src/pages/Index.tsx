@@ -43,11 +43,6 @@ const Index = () => {
   const [recommendationResult, setRecommendationResult] = useState('');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // If user is logged in, show dashboard
-  if (user) {
-    return <UserDashboard />;
-  }
-
   const basicFeatures = [
     {
       icon: <BarChart3 className="h-8 w-8" />,
@@ -399,7 +394,9 @@ const Index = () => {
     return () => observer.disconnect();
   }, []);
 
-  return (
+  return user ? (
+    <UserDashboard />
+  ) : (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm">

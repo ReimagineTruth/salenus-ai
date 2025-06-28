@@ -168,6 +168,10 @@ export const useAuth = () => {
     if (savedUser) {
       try {
         const userData = JSON.parse(savedUser);
+        // Patch planExpiry to be a Date object if it's a string
+        if (userData.planExpiry && typeof userData.planExpiry === 'string') {
+          userData.planExpiry = new Date(userData.planExpiry);
+        }
         setUser(userData);
       } catch (error) {
         console.error('Error parsing saved user:', error);
