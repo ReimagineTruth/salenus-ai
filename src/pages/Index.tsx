@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,14 @@ import {
   TrophyIcon,
   ShieldCheckIcon,
   SparklesIcon,
-  ChartPieIcon
+  ChartPieIcon,
+  DevicePhoneMobileIcon,
+  WifiIcon,
+  BookOpenIcon,
+  AcademicCapIcon,
+  FireIcon,
+  GlobeAltIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 const Index = () => {
@@ -51,6 +59,18 @@ const Index = () => {
       icon: <CloudIcon className="h-8 w-8" />,
       title: "Cross-Platform Sync",
       description: "Sync your data across all your devices with automatic cloud backup.",
+      planLevel: "Basic"
+    },
+    {
+      icon: <DevicePhoneMobileIcon className="h-8 w-8" />,
+      title: "Mobile App Access",
+      description: "Access Gen on iOS and Android with basic offline functionality.",
+      planLevel: "Basic"
+    },
+    {
+      icon: <WifiIcon className="h-8 w-8" />,
+      title: "Basic Notifications",
+      description: "Simple push notifications for habit reminders and task deadlines.",
       planLevel: "Basic"
     }
   ];
@@ -85,6 +105,24 @@ const Index = () => {
       title: "Custom Challenges",
       description: "Create private challenges for friends and track group progress.",
       planLevel: "Pro"
+    },
+    {
+      icon: <BookOpenIcon className="h-8 w-8" />,
+      title: "Habit Journal",
+      description: "Advanced journaling with templates, tags, and reflection prompts.",
+      planLevel: "Pro"
+    },
+    {
+      icon: <FireIcon className="h-8 w-8" />,
+      title: "Streak Protection",
+      description: "Protect your streaks with freeze days and recovery modes.",
+      planLevel: "Pro"
+    },
+    {
+      icon: <ChatBubbleLeftRightIcon className="h-8 w-8" />,
+      title: "Priority Support",
+      description: "Email support with 24-hour response time and live chat access.",
+      planLevel: "Pro"
     }
   ];
 
@@ -109,8 +147,8 @@ const Index = () => {
     },
     {
       icon: <ShieldCheckIcon className="h-8 w-8" />,
-      title: "Priority Support",
-      description: "24/7 priority customer support with dedicated account manager for enterprise users.",
+      title: "VIP Support",
+      description: "24/7 priority customer support with dedicated account manager and phone support.",
       planLevel: "Premium"
     },
     {
@@ -118,10 +156,26 @@ const Index = () => {
       title: "Exclusive Features",
       description: "Early access to beta features, exclusive workshops, and premium content library.",
       planLevel: "Premium"
+    },
+    {
+      icon: <AcademicCapIcon className="h-8 w-8" />,
+      title: "Personalized Courses",
+      description: "AI-curated learning paths and skill development courses based on your goals.",
+      planLevel: "Premium"
+    },
+    {
+      icon: <GlobeAltIcon className="h-8 w-8" />,
+      title: "API Access",
+      description: "Developer API access to integrate Gen with your favorite tools and workflows.",
+      planLevel: "Premium"
+    },
+    {
+      icon: <CogIcon className="h-8 w-8" />,
+      title: "White-Label Options",
+      description: "Custom branding and white-label solutions for teams and organizations.",
+      planLevel: "Premium"
     }
   ];
-
-  const allFeatures = [...basicFeatures, ...proFeatures, ...premiumFeatures];
 
   const monthlyPlans = [
     {
@@ -133,13 +187,16 @@ const Index = () => {
         "Manage up to 20 tasks", 
         "Join community challenges",
         "Cross-platform sync",
-        "Basic progress tracking",
+        "Mobile app access",
+        "Basic notifications",
+        "Weekly progress reports",
         "Pi payments integration"
       ],
       limitations: [
         "No mood tracking",
         "No custom challenges",
-        "Basic analytics only"
+        "Basic analytics only",
+        "Limited support"
       ]
     },
     {
@@ -154,11 +211,14 @@ const Index = () => {
         "Progress photos & journaling",
         "Create custom challenges",
         "Advanced goal milestones",
+        "Habit journal with templates",
+        "Streak protection & recovery",
         "Priority email support"
       ],
       limitations: [
         "No personal AI coach",
-        "Limited analytics depth"
+        "Limited analytics depth",
+        "No API access"
       ],
       popular: true
     },
@@ -172,9 +232,12 @@ const Index = () => {
         "Advanced analytics dashboard",
         "Full calendar integration",
         "Predictive habit insights",
+        "Personalized learning courses",
+        "API access for integrations",
+        "White-label options",
         "Exclusive community events",
         "Beta feature access",
-        "24/7 priority support",
+        "24/7 VIP support with phone",
         "Premium content library"
       ]
     }
@@ -190,13 +253,16 @@ const Index = () => {
         "Manage up to 20 tasks",
         "Join community challenges", 
         "Cross-platform sync",
-        "Basic progress tracking",
+        "Mobile app access",
+        "Basic notifications",
+        "Weekly progress reports",
         "Pi payments integration"
       ],
       limitations: [
         "No mood tracking",
         "No custom challenges", 
-        "Basic analytics only"
+        "Basic analytics only",
+        "Limited support"
       ]
     },
     {
@@ -211,11 +277,14 @@ const Index = () => {
         "Progress photos & journaling",
         "Create custom challenges",
         "Advanced goal milestones",
+        "Habit journal with templates",
+        "Streak protection & recovery",
         "Priority email support"
       ],
       limitations: [
         "No personal AI coach",
-        "Limited analytics depth"
+        "Limited analytics depth",
+        "No API access"
       ],
       popular: true
     },
@@ -229,9 +298,12 @@ const Index = () => {
         "Advanced analytics dashboard", 
         "Full calendar integration",
         "Predictive habit insights",
+        "Personalized learning courses",
+        "API access for integrations",
+        "White-label options",
         "Exclusive community events",
         "Beta feature access",
-        "24/7 priority support",
+        "24/7 VIP support with phone",
         "Premium content library" 
       ]
     }
@@ -255,6 +327,12 @@ const Index = () => {
       text: "Started with Basic, upgraded to Pro after a week. The custom challenges are amazing!",
       rating: 5,
       plan: "Pro"
+    },
+    {
+      name: "Alex R.",
+      text: "The Premium analytics showed me patterns I never noticed. My productivity increased 300%!",
+      rating: 5,
+      plan: "Premium"
     }
   ];
 
@@ -267,36 +345,29 @@ const Index = () => {
       moodSuggestions: formData.has('mood-suggestions'),
       analytics: formData.has('analytics'),
       coaching: formData.has('coaching'),
-      customChallenges: formData.has('custom-challenges')
+      customChallenges: formData.has('custom-challenges'),
+      apiAccess: formData.has('api-access'),
+      whiteLabelOptions: formData.has('white-label')
     };
 
     let recommendation = 'Basic';
     let reasoning = '';
 
-    if (needs.coaching || needs.analytics) {
+    if (needs.coaching || needs.analytics || needs.apiAccess || needs.whiteLabelOptions) {
       recommendation = 'Premium';
-      reasoning = 'You need advanced features like AI coaching and deep analytics.';
+      reasoning = 'You need advanced features like AI coaching, deep analytics, or business integrations.';
     } else if (needs.moodSuggestions || needs.customChallenges) {
       recommendation = 'Pro';
-      reasoning = 'You want personalized features and community engagement.';
+      reasoning = 'You want personalized features and community engagement with unlimited usage.';
     } else if (needs.habitTracking || needs.taskManagement) {
       recommendation = 'Basic';
-      reasoning = 'You need core productivity features to get started.';
+      reasoning = 'You need core productivity features to get started with essential functionality.';
     } else {
       recommendation = 'Basic';
       reasoning = 'Start with our Basic plan and upgrade as you grow!';
     }
 
     setRecommendationResult(`We recommend the ${recommendation} plan. ${reasoning}`);
-  };
-
-  const getPlanBadgeColor = (planLevel: string) => {
-    switch (planLevel) {
-      case 'Basic': return 'bg-blue-100 text-blue-800';
-      case 'Pro': return 'bg-purple-100 text-purple-800';
-      case 'Premium': return 'bg-gold-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
   };
 
   useEffect(() => {
@@ -396,7 +467,7 @@ const Index = () => {
             <div className="flex items-center justify-center mb-8">
               <Badge className="bg-blue-600 text-white text-lg px-4 py-2">Basic Plan Features</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {basicFeatures.map((feature, index) => (
                 <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1 border-blue-200">
                   <CardHeader>
@@ -420,7 +491,7 @@ const Index = () => {
             <div className="flex items-center justify-center mb-8">
               <Badge className="bg-purple-600 text-white text-lg px-4 py-2">Pro Plan Features</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {proFeatures.map((feature, index) => (
                 <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1 border-purple-200">
                   <CardHeader>
@@ -444,7 +515,7 @@ const Index = () => {
             <div className="flex items-center justify-center mb-8">
               <Badge className="bg-yellow-600 text-white text-lg px-4 py-2">Premium Plan Features</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {premiumFeatures.map((feature, index) => (
                 <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1 border-yellow-200">
                   <CardHeader>
@@ -507,6 +578,14 @@ const Index = () => {
                     <label className="flex items-center space-x-2">
                       <input type="checkbox" name="custom-challenges" className="rounded border-gray-300" />
                       <span>Custom challenges</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" name="api-access" className="rounded border-gray-300" />
+                      <span>API access</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="checkbox" name="white-label" className="rounded border-gray-300" />
+                      <span>White-label options</span>
                     </label>
                   </div>
                   <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700">
@@ -655,7 +734,7 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {testimonials.map((testimonial, index) => (
               <Card key={index} className="fade-in-element opacity-0 transition-all duration-1000 hover:shadow-lg hover:-translate-y-1">
                 <CardContent className="pt-6">
