@@ -7,13 +7,12 @@ import {
   ChartBarIcon, 
   ClipboardDocumentListIcon, 
   UsersIcon, 
-  BullseyeIcon, 
+  StarIcon, 
   LightBulbIcon, 
   CloudIcon, 
   CogIcon,
   Bars3Icon,
-  XMarkIcon,
-  StarIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const Index = () => {
@@ -38,7 +37,7 @@ const Index = () => {
       description: "Join global challenges to stay motivated and connected."
     },
     {
-      icon: <BullseyeIcon className="h-8 w-8" />,
+      icon: <StarIcon className="h-8 w-8" />,
       title: "Goal Setting",
       description: "Define and track long-term goals with personalized milestones."
     },
@@ -413,7 +412,7 @@ const Index = () => {
             <Card className="fade-in-element opacity-0 transition-all duration-1000 text-center hover:shadow-lg hover:-translate-y-1">
               <CardHeader>
                 <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <BullseyeIcon className="h-8 w-8 text-white" />
+                  <StarIcon className="h-8 w-8 text-white" />
                 </div>
                 <CardTitle>Daily Challenges</CardTitle>
               </CardHeader>
