@@ -12,6 +12,8 @@ interface LoginModalProps {
   onClose: () => void;
   onLogin: (email: string, password: string, plan: UserPlan) => Promise<void>;
   isLoading: boolean;
+  requirePayment?: boolean;
+  onRequirePayment?: (plan: UserPlan) => void;
 }
 
 const plans = [
@@ -39,7 +41,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
   onLogin,
-  isLoading
+  isLoading,
+  requirePayment,
+  onRequirePayment
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,6 +54,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     if (!email || !password) return;
     
     await onLogin(email, password, selectedPlan);
+    if (requirePayment && onRequirePayment) {
+      onRequirePayment(selectedPlan);
+    }
   };
 
   if (!isOpen) return null;

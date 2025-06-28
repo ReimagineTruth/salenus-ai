@@ -14,7 +14,9 @@ import {
   Lock,
   ArrowUp,
   TrendingUp,
-  Activity
+  Activity,
+  TrendingDown,
+  Minus
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -32,6 +34,14 @@ const moodEmojis = ['😢', '😕', '😐', '🙂', '😄'];
 const moodLabels = ['Very Low', 'Low', 'Neutral', 'Good', 'Excellent'];
 const energyLabels = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
 
+const moods = [
+  { name: 'Excellent', emoji: '😄', color: 'bg-green-100 text-green-800', value: 5 },
+  { name: 'Good', emoji: '🙂', color: 'bg-blue-100 text-blue-800', value: 4 },
+  { name: 'Okay', emoji: '😐', color: 'bg-yellow-100 text-yellow-800', value: 3 },
+  { name: 'Bad', emoji: '😔', color: 'bg-orange-100 text-orange-800', value: 2 },
+  { name: 'Terrible', emoji: '😢', color: 'bg-red-100 text-red-800', value: 1 },
+];
+
 export const MoodTracker: React.FC = () => {
   const { user, hasFeature, upgradePlan } = useAuth();
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
@@ -42,6 +52,14 @@ export const MoodTracker: React.FC = () => {
     activities: []
   });
   const [showEntryForm, setShowEntryForm] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<number | null>(null);
+  const [moodHistory, setMoodHistory] = useState<Array<{ date: string; mood: number; note: string }>>([
+    { date: '2024-01-15', mood: 4, note: 'Had a productive day' },
+    { date: '2024-01-14', mood: 3, note: 'Feeling a bit tired' },
+    { date: '2024-01-13', mood: 5, note: 'Amazing workout session' },
+    { date: '2024-01-12', mood: 2, note: 'Stressful work day' },
+    { date: '2024-01-11', mood: 4, note: 'Good progress on goals' },
+  ]);
 
   const activities = [
     'Exercise', 'Work', 'Social', 'Sleep', 'Food', 
@@ -112,6 +130,32 @@ export const MoodTracker: React.FC = () => {
     ? moodEntries.reduce((sum, entry) => sum + entry.energy, 0) / moodEntries.length 
     : 0;
 
+  const handleMoodSelect = (moodValue: number) => {
+    setSelectedMood(moodValue);
+  };
+
+  const handleSaveMood = () => {
+    if (selectedMood !== null) {
+      const today = new Date().toISOString().split('T')[0];
+      const newEntry = {
+        date: today,
+        mood: selectedMood,
+        note: 'Tracked via mood tracker'
+      };
+      setMoodHistory([newEntry, ...moodHistory]);
+      setSelectedMood(null);
+    }
+  };
+
+  const getMoodTrend = () => {
+    if (moodHistory.length < 2) return 'stable';
+    const recent = moodHistory.slice(0, 3).reduce((sum, entry) => sum + entry.mood, 0) / 3;
+    const older = moodHistory.slice(3, 6).reduce((sum, entry) => sum + entry.mood, 0) / 3;
+    if (recent > older) return 'improving';
+    if (recent < older) return 'declining';
+    return 'stable';
+  };
+
   // Check if user has access to mood tracking
   if (!user) {
     return (
@@ -148,256 +192,146 @@ export const MoodTracker: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Mood Tracker</h2>
-          <p className="text-slate-600">Track your daily mood and energy levels</p>
+          <h1 className="text-3xl font-bold text-gray-900">Mood Tracker</h1>
+          <p className="text-gray-600 mt-2">Track your daily mood and get personalized insights</p>
         </div>
-        <Badge className={user.plan === 'Premium' ? 'bg-purple-600' : 'bg-indigo-600'}>
-          {user.plan} Plan
-        </Badge>
+        <Badge className="bg-indigo-100 text-indigo-800">Pro Feature</Badge>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-slate-800">{moodEntries.length}</div>
-            <p className="text-sm text-slate-600">Days Tracked</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{averageMood.toFixed(1)}</div>
-            <p className="text-sm text-slate-600">Avg. Mood</p>
-            <div className="text-xs text-slate-500 mt-1">
-              {moodEmojis[Math.round(averageMood) - 1]} {moodLabels[Math.round(averageMood) - 1]}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{averageEnergy.toFixed(1)}</div>
-            <p className="text-sm text-slate-600">Avg. Energy</p>
-            <div className="text-xs text-slate-500 mt-1">
-              {energyLabels[Math.round(averageEnergy) - 1]}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-purple-600">
-              {todayEntryData ? '✓' : '○'}
-            </div>
-            <p className="text-sm text-slate-600">Today's Entry</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Today's Entry */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Today's Mood Entry</CardTitle>
-              <CardDescription>
-                {todayEntryData ? 'Update your mood for today' : 'Record your mood for today'}
-              </CardDescription>
-            </div>
-            <Button onClick={() => setShowEntryForm(!showEntryForm)}>
-              {todayEntryData ? 'Update Entry' : 'Add Entry'}
-            </Button>
-          </div>
-        </CardHeader>
-        
-        {showEntryForm && (
-          <CardContent className="space-y-6">
-            {/* Mood Rating */}
-            <div>
-              <Label className="text-base font-medium">How are you feeling today?</Label>
-              <div className="flex justify-between mt-3">
-                {[1, 2, 3, 4, 5].map(level => (
-                  <button
-                    key={level}
-                    onClick={() => setTodayEntry({ ...todayEntry, mood: level })}
-                    className={`flex flex-col items-center p-3 rounded-lg transition-all ${
-                      todayEntry.mood === level 
-                        ? 'bg-blue-100 border-2 border-blue-500' 
-                        : 'bg-slate-100 hover:bg-slate-200'
-                    }`}
-                  >
-                    <span className="text-2xl mb-1">{moodEmojis[level - 1]}</span>
-                    <span className="text-xs text-slate-600">{moodLabels[level - 1]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Energy Rating */}
-            <div>
-              <Label className="text-base font-medium">Energy Level</Label>
-              <div className="flex justify-between mt-3">
-                {[1, 2, 3, 4, 5].map(level => (
-                  <button
-                    key={level}
-                    onClick={() => setTodayEntry({ ...todayEntry, energy: level })}
-                    className={`flex flex-col items-center p-3 rounded-lg transition-all ${
-                      todayEntry.energy === level 
-                        ? 'bg-green-100 border-2 border-green-500' 
-                        : 'bg-slate-100 hover:bg-slate-200'
-                    }`}
-                  >
-                    <Activity className={`h-6 w-6 mb-1 ${
-                      todayEntry.energy === level ? 'text-green-600' : 'text-slate-400'
-                    }`} />
-                    <span className="text-xs text-slate-600">{energyLabels[level - 1]}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Activities */}
-            <div>
-              <Label className="text-base font-medium">Activities Today</Label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3">
-                {activities.map(activity => (
-                  <button
-                    key={activity}
-                    onClick={() => toggleActivity(activity)}
-                    className={`p-2 rounded-md text-sm transition-all ${
-                      todayEntry.activities?.includes(activity)
-                        ? 'bg-purple-100 text-purple-800 border-2 border-purple-500'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {activity}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <Label htmlFor="mood-notes">Notes (Optional)</Label>
-              <Textarea
-                id="mood-notes"
-                value={todayEntry.notes}
-                onChange={(e) => setTodayEntry({ ...todayEntry, notes: e.target.value })}
-                placeholder="How was your day? Any specific events or feelings?"
-                rows={3}
-              />
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowEntryForm(false)}>
-                Cancel
-              </Button>
-              <Button onClick={addMoodEntry}>
-                {todayEntryData ? 'Update Entry' : 'Save Entry'}
-              </Button>
-            </div>
-          </CardContent>
-        )}
-
-        {/* Show today's entry if exists */}
-        {todayEntryData && !showEntryForm && (
-          <CardContent>
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-              <div className="flex items-center space-x-4">
-                <span className="text-3xl">{moodEmojis[todayEntryData.mood - 1]}</span>
-                <div>
-                  <div className="font-medium">{moodLabels[todayEntryData.mood - 1]}</div>
-                  <div className="text-sm text-slate-600">Energy: {energyLabels[todayEntryData.energy - 1]}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm text-slate-600">Today</div>
-                <div className="text-xs text-slate-500">{new Date().toLocaleDateString()}</div>
-              </div>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Recent Entries */}
-      {moodEntries.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Mood History</CardTitle>
-            <CardDescription>Your mood patterns over the last 7 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {moodEntries.slice(-7).reverse().map(entry => (
-                <div key={entry.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">{moodEmojis[entry.mood - 1]}</span>
-                    <div>
-                      <div className="font-medium">{moodLabels[entry.mood - 1]}</div>
-                      <div className="text-sm text-slate-600">
-                        Energy: {energyLabels[entry.energy - 1]}
-                      </div>
-                      {entry.activities.length > 0 && (
-                        <div className="text-xs text-slate-500">
-                          Activities: {entry.activities.join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">
-                      {new Date(entry.date).toLocaleDateString()}
-                    </div>
-                    {entry.notes && (
-                      <div className="text-xs text-slate-500 max-w-xs truncate">
-                        {entry.notes}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Insights */}
-      {moodEntries.length >= 3 && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Current Mood Selection */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Mood Insights
+              <Heart className="h-5 w-5 text-red-500" />
+              Today's Mood
             </CardTitle>
-            <CardDescription>Based on your mood tracking data</CardDescription>
+            <CardDescription>How are you feeling today?</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-medium text-blue-800 mb-2">Mood Pattern</h4>
-                <p className="text-sm text-blue-700">
-                  Your average mood is {averageMood.toFixed(1)}/5, which indicates a 
-                  {averageMood > 3.5 ? ' positive' : averageMood > 2.5 ? ' neutral' : ' challenging'} 
-                  overall emotional state.
-                </p>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-5 gap-2">
+              {moods.map((mood) => (
+                <button
+                  key={mood.value}
+                  onClick={() => handleMoodSelect(mood.value)}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    selectedMood === mood.value
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{mood.emoji}</div>
+                  <div className="text-xs font-medium">{mood.name}</div>
+                </button>
+              ))}
+            </div>
+            <Button 
+              onClick={handleSaveMood} 
+              disabled={selectedMood === null}
+              className="w-full"
+            >
+              Save Mood
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Mood Statistics */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Mood Statistics</CardTitle>
+            <CardDescription>Your mood patterns and trends</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Average Mood</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-indigo-600">
+                  {averageMood.toFixed(1)}
+                </span>
+                <span className="text-lg">
+                  {moods.find(m => Math.round(m.value) === Math.round(averageMood))?.emoji}
+                </span>
               </div>
-              <div className="p-4 bg-green-50 rounded-lg">
-                <h4 className="font-medium text-green-800 mb-2">Energy Level</h4>
-                <p className="text-sm text-green-700">
-                  Your average energy is {averageEnergy.toFixed(1)}/5. Consider 
-                  {averageEnergy < 3 ? ' increasing physical activity' : ' maintaining your current routine'} 
-                  to optimize your energy levels.
-                </p>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Trend</span>
+              <div className="flex items-center gap-2">
+                {getMoodTrend() === 'improving' && <TrendingUp className="h-4 w-4 text-green-500" />}
+                {getMoodTrend() === 'declining' && <TrendingDown className="h-4 w-4 text-red-500" />}
+                {getMoodTrend() === 'stable' && <Minus className="h-4 w-4 text-gray-500" />}
+                <span className="text-sm font-medium capitalize">{getMoodTrend()}</span>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Days Tracked</span>
+              <span className="text-lg font-bold text-gray-900">{moodHistory.length}</span>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        {/* Mood Insights */}
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Insights</CardTitle>
+            <CardDescription>Personalized recommendations</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-blue-900 mb-2">Mood Pattern Detected</h4>
+              <p className="text-sm text-blue-700">
+                You tend to feel better on days when you exercise. Consider adding a morning workout to your routine.
+              </p>
+            </div>
+            
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-green-900 mb-2">Positive Trend</h4>
+              <p className="text-sm text-green-700">
+                Your mood has improved by 15% this week compared to last week. Keep up the great work!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Mood History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Mood History
+          </CardTitle>
+          <CardDescription>Your mood tracking over time</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {moodHistory.slice(0, 10).map((entry, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">
+                    {moods.find(m => m.value === entry.mood)?.emoji}
+                  </span>
+                  <div>
+                    <div className="font-medium">
+                      {moods.find(m => m.value === entry.mood)?.name}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {new Date(entry.date).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 max-w-xs truncate">
+                  {entry.note}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }; 

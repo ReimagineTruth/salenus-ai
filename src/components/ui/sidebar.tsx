@@ -2,6 +2,8 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
+import { NavLink } from 'react-router-dom'
+import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Lock, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings } from 'lucide-react'
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -16,6 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useAuth } from '@/hooks/useAuth'
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -154,108 +157,237 @@ const SidebarProvider = React.forwardRef<
 )
 SidebarProvider.displayName = "SidebarProvider"
 
-const Sidebar = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentProps<"div"> & {
-    side?: "left" | "right"
-    variant?: "sidebar" | "floating" | "inset"
-    collapsible?: "offcanvas" | "icon" | "none"
-  }
->(
-  (
-    {
-      side = "left",
-      variant = "sidebar",
-      collapsible = "offcanvas",
-      className,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+const allNavItems = [
+  // Basic features
+  { name: 'Habit Tracking', icon: <BarChart3 className="h-5 w-5" />, path: '/dashboard/habits', feature: 'habit_tracking', minPlan: 'Basic' },
+  { name: 'Task Management', icon: <ClipboardList className="h-5 w-5" />, path: '/dashboard/tasks', feature: 'task_management', minPlan: 'Basic' },
+  { name: 'Community Challenges', icon: <Users className="h-5 w-5" />, path: '/dashboard/challenges', feature: 'community_challenges', minPlan: 'Basic' },
+  { name: 'Cross-Platform Sync', icon: <Cloud className="h-5 w-5" />, path: '/dashboard/sync', feature: 'cross_platform_sync', minPlan: 'Basic' },
+  { name: 'Mobile App Access', icon: <Smartphone className="h-5 w-5" />, path: '/dashboard/mobile', feature: 'mobile_app', minPlan: 'Basic' },
+  { name: 'Basic Notifications', icon: <Bell className="h-5 w-5" />, path: '/dashboard/notifications', feature: 'basic_notifications', minPlan: 'Basic' },
+  // Pro features
+  { name: 'Mood Tracker', icon: <Heart className="h-5 w-5" />, path: '/dashboard/mood', feature: 'mood_tracking', minPlan: 'Pro' },
+  { name: 'Advanced Goals', icon: <Star className="h-5 w-5" />, path: '/dashboard/goals', feature: 'advanced_goals', minPlan: 'Pro' },
+  { name: 'Habit Journal', icon: <BookOpen className="h-5 w-5" />, path: '/dashboard/journal', feature: 'habit_journal', minPlan: 'Pro' },
+  { name: 'Progress Photos', icon: <Camera className="h-5 w-5" />, path: '/dashboard/photos', feature: 'progress_photos', minPlan: 'Pro' },
+  { name: 'Custom Challenges', icon: <Trophy className="h-5 w-5" />, path: '/dashboard/custom-challenges', feature: 'custom_challenges', minPlan: 'Pro' },
+  { name: 'Streak Protection', icon: <Flame className="h-5 w-5" />, path: '/dashboard/streak-protection', feature: 'streak_protection', minPlan: 'Pro' },
+  { name: 'Smart Reminders', icon: <Bell className="h-5 w-5" />, path: '/dashboard/smart-reminders', feature: 'smart_reminders', minPlan: 'Pro' },
+  { name: 'Priority Support', icon: <MessageSquare className="h-5 w-5" />, path: '/dashboard/support', feature: 'priority_support', minPlan: 'Pro' },
+  // Premium features
+  { name: 'AI Personal Coach', icon: <Sparkles className="h-5 w-5" />, path: '/dashboard/ai-coach', feature: 'ai_coaching', minPlan: 'Premium' },
+  { name: 'Advanced Analytics', icon: <PieChart className="h-5 w-5" />, path: '/dashboard/analytics', feature: 'advanced_analytics', minPlan: 'Premium' },
+  { name: 'Calendar Integration', icon: <Calendar className="h-5 w-5" />, path: '/dashboard/calendar', feature: 'calendar_integration', minPlan: 'Premium' },
+  { name: 'VIP Support', icon: <Shield className="h-5 w-5" />, path: '/dashboard/vip-support', feature: 'vip_support', minPlan: 'Premium' },
+  { name: 'Exclusive Features', icon: <Lightbulb className="h-5 w-5" />, path: '/dashboard/exclusive', feature: 'exclusive_features', minPlan: 'Premium' },
+  { name: 'Personalized Courses', icon: <GraduationCap className="h-5 w-5" />, path: '/dashboard/courses', feature: 'personalized_courses', minPlan: 'Premium' },
+  { name: 'API Access', icon: <Globe className="h-5 w-5" />, path: '/dashboard/api', feature: 'api_access', minPlan: 'Premium' },
+  { name: 'White-Label Options', icon: <Settings className="h-5 w-5" />, path: '/dashboard/white-label', feature: 'white_label', minPlan: 'Premium' },
+];
 
-    if (collapsible === "none") {
-      return (
-        <div
-          className={cn(
-            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
-            className
-          )}
-          ref={ref}
-          {...props}
-        >
-          {children}
-        </div>
-      )
-    }
+export const Sidebar = ({ 
+  onLockedFeatureClick, 
+  userPlan = 'Free' 
+}: { 
+  onLockedFeatureClick?: (feature: string, minPlan: string) => void;
+  userPlan?: string;
+}) => {
+  // Check if user has access to a specific plan level
+  const hasPlanAccess = (requiredPlan: string) => {
+    const planHierarchy = { 'Free': 0, 'Basic': 1, 'Pro': 2, 'Premium': 3 };
+    const userPlanLevel = planHierarchy[userPlan] || 0;
+    const requiredPlanLevel = planHierarchy[requiredPlan] || 0;
+    return userPlanLevel >= requiredPlanLevel;
+  };
 
-    if (isMobile) {
-      return (
-        <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-          <SheetContent
-            data-sidebar="sidebar"
-            data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-            style={
-              {
-                "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-              } as React.CSSProperties
-            }
-            side={side}
-          >
-            <div className="flex h-full w-full flex-col">{children}</div>
-          </SheetContent>
-        </Sheet>
-      )
-    }
-
-    return (
-      <div
-        ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
-        data-state={state}
-        data-collapsible={state === "collapsed" ? collapsible : ""}
-        data-variant={variant}
-        data-side={side}
-      >
-        {/* This is what handles the sidebar gap on desktop */}
-        <div
-          className={cn(
-            "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear",
-            "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[side=right]:rotate-180",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"
+  return (
+    <aside className="h-screen w-64 bg-white border-r border-slate-200 flex flex-col">
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100">
+        <img src="/logo.png" alt="Salenus AI Logo" className="h-10 w-10 rounded-full" />
+        <span className="font-heading text-xl font-bold text-navy-900">Salenus A.I</span>
+      </div>
+      
+      {/* Plan indicator */}
+      <div className="px-6 py-3 border-b border-slate-100">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-700">{userPlan} Plan</span>
+          {userPlan !== 'Premium' && (
+            <button
+              onClick={() => onLockedFeatureClick && onLockedFeatureClick('upgrade', userPlan === 'Free' ? 'Basic' : userPlan === 'Basic' ? 'Pro' : 'Premium')}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Upgrade
+            </button>
           )}
-        />
-        <div
-          className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            // Adjust the padding for floating and inset variants.
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-            className
-          )}
-          {...props}
-        >
-          <div
-            data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
-          >
-            {children}
-          </div>
         </div>
       </div>
-    )
-  }
-)
-Sidebar.displayName = "Sidebar"
+      
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        {/* Basic Features */}
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Basic Features</h3>
+          {allNavItems.filter(item => item.minPlan === 'Basic').map(item => {
+            const locked = !hasPlanAccess(item.minPlan);
+            return (
+              <div key={item.name}>
+                {locked ? (
+                  <button
+                    className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                    onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
+                    type="button"
+                  >
+                    {item.icon}
+                    {item.name}
+                    <Lock className="h-4 w-4 ml-auto text-slate-300" />
+                  </button>
+                ) : (
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-300 sidebar-item ${
+                        isActive ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                      }`
+                    }
+                  >
+                    {item.icon}
+                    {item.name}
+                  </NavLink>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pro Features */}
+        {hasPlanAccess('Pro') && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Pro Features</h3>
+            {allNavItems.filter(item => item.minPlan === 'Pro').map(item => {
+              const locked = !hasPlanAccess(item.minPlan);
+              return (
+                <div key={item.name}>
+                  {locked ? (
+                    <button
+                      className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                      onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
+                      type="button"
+                    >
+                      {item.icon}
+                      {item.name}
+                      <Lock className="h-4 w-4 ml-auto text-slate-300" />
+                    </button>
+                  ) : (
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-300 sidebar-item ${
+                          isActive ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                        }`
+                      }
+                    >
+                      {item.icon}
+                      {item.name}
+                    </NavLink>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Premium Features */}
+        {hasPlanAccess('Premium') && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Premium Features</h3>
+            {allNavItems.filter(item => item.minPlan === 'Premium').map(item => {
+              const locked = !hasPlanAccess(item.minPlan);
+              return (
+                <div key={item.name}>
+                  {locked ? (
+                    <button
+                      className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                      onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
+                      type="button"
+                    >
+                      {item.icon}
+                      {item.name}
+                      <Lock className="h-4 w-4 ml-auto text-slate-300" />
+                    </button>
+                  ) : (
+                    <NavLink
+                      to={item.path}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-300 sidebar-item ${
+                          isActive ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                        }`
+                      }
+                    >
+                      {item.icon}
+                      {item.name}
+                    </NavLink>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Show locked Pro/Premium features for lower plans */}
+        {!hasPlanAccess('Pro') && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Pro Features</h3>
+            {allNavItems.filter(item => item.minPlan === 'Pro').slice(0, 3).map(item => (
+              <button
+                key={item.name}
+                className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
+                type="button"
+              >
+                {item.icon}
+                {item.name}
+                <Lock className="h-4 w-4 ml-auto text-slate-300" />
+              </button>
+            ))}
+            <button
+              className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-blue-600 cursor-pointer w-full hover:bg-blue-50 sidebar-item"
+              onClick={() => onLockedFeatureClick && onLockedFeatureClick('upgrade', 'Pro')}
+              type="button"
+            >
+              <Sparkles className="h-4 w-4" />
+              Upgrade to Pro
+            </button>
+          </div>
+        )}
+
+        {!hasPlanAccess('Premium') && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Premium Features</h3>
+            {allNavItems.filter(item => item.minPlan === 'Premium').slice(0, 3).map(item => (
+              <button
+                key={item.name}
+                className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
+                type="button"
+              >
+                {item.icon}
+                {item.name}
+                <Lock className="h-4 w-4 ml-auto text-slate-300" />
+              </button>
+            ))}
+            <button
+              className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-purple-600 cursor-pointer w-full hover:bg-purple-50 sidebar-item"
+              onClick={() => onLockedFeatureClick && onLockedFeatureClick('upgrade', 'Premium')}
+              type="button"
+            >
+              <Sparkles className="h-4 w-4" />
+              Upgrade to Premium
+            </button>
+          </div>
+        )}
+      </nav>
+    </aside>
+  );
+};
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
@@ -734,7 +866,6 @@ const SidebarMenuSubButton = React.forwardRef<
 SidebarMenuSubButton.displayName = "SidebarMenuSubButton"
 
 export {
-  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
