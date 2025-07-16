@@ -429,6 +429,10 @@ const App = () => {
               element={
                 <FooterPageLayout>
                   <Routes>
+                    {/* Salenus AI Official Route */}
+                    <Route path="/salenusaiofficial" element={<Index user={user} selectedPlan={selectedPlan} hasPaid={hasPaid} onChoosePlan={(plan, billing) => handleChoosePlan(plan, billing)} onLogout={handleLogout} />} />
+                    {/* Redirect free-preview to salenusaiofficial */}
+                    <Route path="/free-preview" element={<Navigate to="/salenusaiofficial" replace />} />
                     {/* Redirect common feature routes to dashboard equivalents */}
                     <Route path="/habits" element={<Navigate to="/dashboard/habits" replace />} />
                     <Route path="/tasks" element={<Navigate to="/dashboard/tasks" replace />} />

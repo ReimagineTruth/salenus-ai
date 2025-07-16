@@ -14,7 +14,7 @@ import { PaymentModal } from '@/components/PaymentModal';
 import { useAuth, UserPlan } from '@/hooks/useAuth';
 import { FeatureCard } from '@/components/FeatureCard';
 import { FeatureLoader } from '@/components/ui/Loader';
-import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Heart, Sparkles, Star, Camera, Trophy, BookOpen, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Lock, Search, Plus, Home, Menu, X, ChevronLeft, ChevronRight, RefreshCw, Settings as SettingsIcon, User, LogOut, HelpCircle, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Download, Upload, Trash2, Key } from 'lucide-react';
+import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Heart, Sparkles, Star, Camera, Trophy, BookOpen, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Lock, Search, Plus, Home, Menu, X, ChevronLeft, ChevronRight, RefreshCw, Settings as SettingsIcon, User, LogOut, HelpCircle, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Download, Upload, Trash2, Key, Crown, Zap } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PanelLeft } from 'lucide-react';
@@ -87,6 +87,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     if (user?.plan === 'Premium') return 'habits';
     return 'habits';
   });
+
+  // Add state to track if current feature is locked
+  const [isFeatureLocked, setIsFeatureLocked] = React.useState(false);
+  const [lockedFeatureInfo, setLockedFeatureInfo] = React.useState<{
+    name: string;
+    description: string;
+    requiredPlan: UserPlan;
+    icon: React.ReactNode;
+  } | null>(null);
 
   // Update tab state to default to overview
   const [activeTab, setActiveTab] = React.useState(() => {
@@ -293,6 +302,54 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     setActiveFeature(route);
     setActiveTab('overview'); // Switch to overview tab when navigating to a feature
     
+    // Check if feature is locked for current user plan
+    const featureAccess = {
+      'free-preview': 'Free',
+      'pi-network': 'Free',
+      'habits': 'Basic',
+      'tasks': 'Basic',
+      'challenges': 'Basic',
+      'sync': 'Basic',
+      'mobile': 'Basic',
+      'notifications': 'Basic',
+      'mood': 'Pro',
+      'goals': 'Pro',
+      'journal': 'Pro',
+      'photos': 'Pro',
+      'custom-challenges': 'Pro',
+      'streak-protection': 'Pro',
+      'smart-reminders': 'Pro',
+      'support': 'Pro',
+      'ai-coach': 'Premium',
+      'analytics': 'Premium',
+      'calendar': 'Premium',
+      'vip-support': 'Premium',
+      'exclusive': 'Premium',
+      'courses': 'Premium',
+      'api': 'Premium',
+      'white-label': 'Premium'
+    };
+
+    const requiredPlan = featureAccess[route as keyof typeof featureAccess] as UserPlan;
+    const userPlanLevel = { 'Free': 0, 'Basic': 1, 'Pro': 2, 'Premium': 3 };
+    const currentUserLevel = userPlanLevel[user?.plan || 'Free'];
+    const requiredLevel = userPlanLevel[requiredPlan];
+
+    if (currentUserLevel < requiredLevel) {
+      // Feature is locked - show locked feature view
+      setIsFeatureLocked(true);
+      setLockedFeatureInfo({
+        name: featureName,
+        description: getFeatureDescription(featureName),
+        requiredPlan,
+        icon: getFeatureIcon(featureName)
+      });
+    } else {
+      // Feature is available
+      setIsFeatureLocked(false);
+      setLockedFeatureInfo(null);
+    }
+    
     // Simulate loading time
     setTimeout(() => {
       setFeatureLoading(false);
@@ -300,10 +357,178 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     }, 1500);
   };
 
+  // Helper function to get feature description
+  const getFeatureDescription = (featureName: string) => {
+    const descriptions: Record<string, string> = {
+      'Habit Tracking': 'Track your daily habits and build streaks with advanced analytics',
+      'Task Management': 'Create and manage tasks with due dates and priority levels',
+      'Community Challenges': 'Join community challenges and compete with others',
+      'Cross-Platform Sync': 'Sync your data across all your devices',
+      'Mobile App Access': 'Access Salenus A.I on mobile devices',
+      'Basic Notifications': 'Get smart reminders and notifications',
+      'Mood Tracker': 'Track your mood and get personalized insights',
+      'Advanced Goals': 'Set complex goals with sub-milestones and tracking',
+      'Habit Journal': 'Advanced journaling with templates and reflection prompts',
+      'Progress Photos': 'Document your journey with progress photos',
+      'Custom Challenges': 'Create private challenges for friends and family',
+      'Streak Protection': 'Protect your streaks with freeze days and recovery modes',
+      'Smart Reminders': 'AI-powered reminders that adapt to your schedule',
+      'Priority Support': 'Get priority customer support with faster response times',
+      'AI Personal Coach': 'Get personalized coaching sessions from our AI',
+      'Advanced Analytics': 'Deep insights with trend analysis and predictions',
+      'Calendar Integration': 'Full integration with Google Calendar, Outlook, and Apple Calendar',
+      'VIP Support': '24/7 priority support with dedicated account manager',
+      'Exclusive Features': 'Early access to beta features and exclusive content',
+      'Personalized Courses': 'AI-curated learning paths based on your goals',
+      'API Access': 'Developer API access to integrate with your tools',
+      'White-Label Options': 'Custom branding and white-label solutions'
+    };
+    return descriptions[featureName] || 'Advanced feature with powerful capabilities';
+  };
+
+  // Helper function to get feature icon
+  const getFeatureIcon = (featureName: string) => {
+    const icons: Record<string, React.ReactNode> = {
+      'Habit Tracking': <BarChart3 className="h-8 w-8" />,
+      'Task Management': <ClipboardList className="h-8 w-8" />,
+      'Community Challenges': <Users className="h-8 w-8" />,
+      'Cross-Platform Sync': <Cloud className="h-8 w-8" />,
+      'Mobile App Access': <Smartphone className="h-8 w-8" />,
+      'Basic Notifications': <Bell className="h-8 w-8" />,
+      'Mood Tracker': <Heart className="h-8 w-8" />,
+      'Advanced Goals': <Star className="h-8 w-8" />,
+      'Habit Journal': <BookOpen className="h-8 w-8" />,
+      'Progress Photos': <Camera className="h-8 w-8" />,
+      'Custom Challenges': <Trophy className="h-8 w-8" />,
+      'Streak Protection': <Flame className="h-8 w-8" />,
+      'Smart Reminders': <Bell className="h-8 w-8" />,
+      'Priority Support': <MessageSquare className="h-8 w-8" />,
+      'AI Personal Coach': <Sparkles className="h-8 w-8" />,
+      'Advanced Analytics': <PieChart className="h-8 w-8" />,
+      'Calendar Integration': <Calendar className="h-8 w-8" />,
+      'VIP Support': <Shield className="h-8 w-8" />,
+      'Exclusive Features': <Lightbulb className="h-8 w-8" />,
+      'Personalized Courses': <GraduationCap className="h-8 w-8" />,
+      'API Access': <Globe className="h-8 w-8" />,
+      'White-Label Options': <Settings className="h-8 w-8" />
+    };
+    return icons[featureName] || <Zap className="h-8 w-8" />;
+  };
+
   // Get current breadcrumb path
   const getBreadcrumbPath = () => {
     const path = location.pathname.split('/').pop() || 'dashboard';
     return path.charAt(0).toUpperCase() + path.slice(1);
+  };
+
+  // LockedFeature Component
+  const LockedFeature = ({ featureInfo }: { featureInfo: { name: string; description: string; requiredPlan: UserPlan; icon: React.ReactNode } }) => {
+    const planPrices = {
+      'Basic': '5 Pi',
+      'Pro': '10 Pi',
+      'Premium': '15 Pi'
+    };
+
+    const planColors = {
+      'Basic': 'bg-blue-600',
+      'Pro': 'bg-purple-600',
+      'Premium': 'bg-yellow-600'
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Locked Feature Header */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gray-100 rounded-lg">
+                {featureInfo.icon}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{featureInfo.name}</h3>
+                <p className="text-gray-600">{featureInfo.description}</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-red-600 border-red-200">
+              <Lock className="h-4 w-4 mr-1" />
+              Locked
+            </Badge>
+          </div>
+        </div>
+
+        {/* Locked Feature Content */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="relative">
+            {/* Blurred overlay */}
+            <div className="absolute inset-0 bg-gray-50/80 backdrop-blur-sm z-10 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
+                  <Lock className="h-8 w-8 text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    Upgrade to {featureInfo.requiredPlan}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Unlock {featureInfo.name} and many more features
+                  </p>
+                  <div className="flex items-center justify-center space-x-4">
+                    <Badge className={`${planColors[featureInfo.requiredPlan]} text-white`}>
+                      {planPrices[featureInfo.requiredPlan]}
+                    </Badge>
+                    <span className="text-sm text-gray-500">•</span>
+                    <span className="text-sm text-gray-500">Unlock all {featureInfo.requiredPlan} features</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Blurred content underneath */}
+            <div className="p-6 opacity-30">
+              <div className="space-y-4">
+                <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="h-20 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-20 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Upgrade CTA */}
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center space-x-2">
+              <Crown className="h-6 w-6 text-yellow-600" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                Unlock {featureInfo.requiredPlan} Features
+              </h3>
+            </div>
+            <p className="text-gray-600 max-w-md mx-auto">
+              Get access to {featureInfo.name} and all other {featureInfo.requiredPlan} features for just {planPrices[featureInfo.requiredPlan]}
+            </p>
+            <div className="flex items-center justify-center space-x-4">
+              <Button 
+                onClick={() => handleLockedFeatureClick('upgrade', featureInfo.requiredPlan)}
+                className={`${planColors[featureInfo.requiredPlan]} hover:opacity-90 text-white font-semibold`}
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Upgrade to {featureInfo.requiredPlan}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setActiveTab('features')}
+              >
+                View All Features
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -551,215 +776,221 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
 
           {/* Tab Content */}
           {activeTab === 'overview' ? (
-            // Overview Tab Content - Show actual feature component
+            // Overview Tab Content - Show actual feature component or locked feature view
             <div className="space-y-6">
-              {/* Feature Header */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {activeFeature === 'habits' && 'Habit Tracking'}
-                      {activeFeature === 'tasks' && 'Task Management'}
-                      {activeFeature === 'challenges' && 'Community Challenges'}
-                      {activeFeature === 'sync' && 'Cross-Platform Sync'}
-                      {activeFeature === 'mobile' && 'Mobile App Access'}
-                      {activeFeature === 'notifications' && 'Basic Notifications'}
-                      {activeFeature === 'mood' && 'Mood Tracker'}
-                      {activeFeature === 'free-preview' && 'Free Habit Preview'}
-                      {activeFeature === 'pi-network' && 'Pi Network Integration'}
-                      {activeFeature === 'goals' && 'Advanced Goals'}
-                      {activeFeature === 'journal' && 'Habit Journal'}
-                      {activeFeature === 'photos' && 'Progress Photos'}
-                      {activeFeature === 'custom-challenges' && 'Custom Challenges'}
-                      {activeFeature === 'streak-protection' && 'Streak Protection'}
-                      {activeFeature === 'smart-reminders' && 'Smart Reminders'}
-                      {activeFeature === 'support' && 'Priority Support'}
-                      {activeFeature === 'ai-coach' && 'AI Personal Coach'}
-                      {activeFeature === 'analytics' && 'Advanced Analytics'}
-                      {activeFeature === 'calendar' && 'Calendar Integration'}
-                      {activeFeature === 'vip-support' && 'VIP Support'}
-                      {activeFeature === 'exclusive' && 'Exclusive Features'}
-                      {activeFeature === 'courses' && 'Personalized Courses'}
-                      {activeFeature === 'api' && 'API Access'}
-                      {activeFeature === 'white-label' && 'White-Label Options'}
-                    </h3>
-                    <p className="text-gray-600 text-sm">
-                      {activeFeature === 'habits' && 'Track your daily habits and build streaks'}
-                      {activeFeature === 'tasks' && 'Manage your tasks and stay organized'}
-                      {activeFeature === 'challenges' && 'Join community challenges and compete'}
-                      {activeFeature === 'sync' && 'Sync your data across all devices'}
-                      {activeFeature === 'mobile' && 'Access Salenus A.I on mobile devices'}
-                      {activeFeature === 'notifications' && 'Get smart reminders and notifications'}
-                      {activeFeature === 'mood' && 'Track your mood and get insights'}
-                      {activeFeature === 'free-preview' && 'Preview basic habit tracking features'}
-                      {activeFeature === 'pi-network' && 'Integrate with Pi Network ecosystem'}
-                      {activeFeature === 'goals' && 'Set and track advanced goals'}
-                      {activeFeature === 'journal' && 'Journal your habits and progress'}
-                      {activeFeature === 'photos' && 'Track progress with photos'}
-                      {activeFeature === 'custom-challenges' && 'Create custom challenges'}
-                      {activeFeature === 'streak-protection' && 'Protect your streaks'}
-                      {activeFeature === 'smart-reminders' && 'Get AI-powered reminders'}
-                      {activeFeature === 'support' && 'Get priority customer support'}
-                      {activeFeature === 'ai-coach' && 'Get personalized AI coaching'}
-                      {activeFeature === 'analytics' && 'Advanced analytics and insights'}
-                      {activeFeature === 'calendar' && 'Full calendar integration'}
-                      {activeFeature === 'vip-support' && '24/7 VIP support'}
-                      {activeFeature === 'exclusive' && 'Access exclusive features'}
-                      {activeFeature === 'courses' && 'Personalized learning courses'}
-                      {activeFeature === 'api' && 'Developer API access'}
-                      {activeFeature === 'white-label' && 'White-label solutions'}
-                    </p>
+              {featureLoading ? (
+                <FeatureLoader featureName={currentFeature} />
+              ) : isFeatureLocked && lockedFeatureInfo ? (
+                // Show locked feature view
+                <LockedFeature featureInfo={lockedFeatureInfo} />
+              ) : (
+                // Show available feature component
+                <>
+                  {/* Feature Header */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {activeFeature === 'habits' && 'Habit Tracking'}
+                          {activeFeature === 'tasks' && 'Task Management'}
+                          {activeFeature === 'challenges' && 'Community Challenges'}
+                          {activeFeature === 'sync' && 'Cross-Platform Sync'}
+                          {activeFeature === 'mobile' && 'Mobile App Access'}
+                          {activeFeature === 'notifications' && 'Basic Notifications'}
+                          {activeFeature === 'mood' && 'Mood Tracker'}
+                          {activeFeature === 'free-preview' && 'Free Habit Preview'}
+                          {activeFeature === 'pi-network' && 'Pi Network Integration'}
+                          {activeFeature === 'goals' && 'Advanced Goals'}
+                          {activeFeature === 'journal' && 'Habit Journal'}
+                          {activeFeature === 'photos' && 'Progress Photos'}
+                          {activeFeature === 'custom-challenges' && 'Custom Challenges'}
+                          {activeFeature === 'streak-protection' && 'Streak Protection'}
+                          {activeFeature === 'smart-reminders' && 'Smart Reminders'}
+                          {activeFeature === 'support' && 'Priority Support'}
+                          {activeFeature === 'ai-coach' && 'AI Personal Coach'}
+                          {activeFeature === 'analytics' && 'Advanced Analytics'}
+                          {activeFeature === 'calendar' && 'Calendar Integration'}
+                          {activeFeature === 'vip-support' && 'VIP Support'}
+                          {activeFeature === 'exclusive' && 'Exclusive Features'}
+                          {activeFeature === 'courses' && 'Personalized Courses'}
+                          {activeFeature === 'api' && 'API Access'}
+                          {activeFeature === 'white-label' && 'White-Label Options'}
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          {activeFeature === 'habits' && 'Track your daily habits and build streaks'}
+                          {activeFeature === 'tasks' && 'Manage your tasks and stay organized'}
+                          {activeFeature === 'challenges' && 'Join community challenges and compete'}
+                          {activeFeature === 'sync' && 'Sync your data across all devices'}
+                          {activeFeature === 'mobile' && 'Access Salenus A.I on mobile devices'}
+                          {activeFeature === 'notifications' && 'Get smart reminders and notifications'}
+                          {activeFeature === 'mood' && 'Track your mood and get insights'}
+                          {activeFeature === 'free-preview' && 'Preview basic habit tracking features'}
+                          {activeFeature === 'pi-network' && 'Integrate with Pi Network ecosystem'}
+                          {activeFeature === 'goals' && 'Set and track advanced goals'}
+                          {activeFeature === 'journal' && 'Journal your habits and progress'}
+                          {activeFeature === 'photos' && 'Track progress with photos'}
+                          {activeFeature === 'custom-challenges' && 'Create custom challenges'}
+                          {activeFeature === 'streak-protection' && 'Protect your streaks'}
+                          {activeFeature === 'smart-reminders' && 'Get AI-powered reminders'}
+                          {activeFeature === 'support' && 'Get priority customer support'}
+                          {activeFeature === 'ai-coach' && 'Get personalized AI coaching'}
+                          {activeFeature === 'analytics' && 'Advanced analytics and insights'}
+                          {activeFeature === 'calendar' && 'Full calendar integration'}
+                          {activeFeature === 'vip-support' && '24/7 VIP support'}
+                          {activeFeature === 'exclusive' && 'Access exclusive features'}
+                          {activeFeature === 'courses' && 'Personalized learning courses'}
+                          {activeFeature === 'api' && 'Developer API access'}
+                          {activeFeature === 'white-label' && 'White-label solutions'}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{user.plan} Plan</Badge>
+                    </div>
                   </div>
-                  <Badge variant="secondary">{user.plan} Plan</Badge>
-                </div>
-              </div>
 
-              {/* Feature Component */}
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                {featureLoading ? (
-                  <FeatureLoader featureName={currentFeature} />
-                ) : (
-                  <div className="p-6">
-                    {/* Render the actual feature component based on activeFeature */}
-                    {activeFeature === 'habits' && hasPlanAccess('Basic') && <HabitTracker />}
-                    {activeFeature === 'tasks' && hasPlanAccess('Basic') && <TaskManager />}
-                    {activeFeature === 'challenges' && hasPlanAccess('Basic') && <CommunityChallenges />}
-                    {activeFeature === 'sync' && hasPlanAccess('Basic') && <CrossPlatformSync />}
-                    {activeFeature === 'mobile' && hasPlanAccess('Basic') && <MobileAppAccess />}
-                    {activeFeature === 'notifications' && hasPlanAccess('Basic') && <BasicNotifications />}
-                    {activeFeature === 'mood' && hasPlanAccess('Pro') && <MoodTracker />}
-                    {activeFeature === 'free-preview' && hasPlanAccess('Free') && (
-                      <TestFeature 
-                        featureName="Free Habit Preview" 
-                        description="Preview basic habit tracking. Upgrade to unlock full functionality." 
-                        icon={<BarChart3 className="h-8 w-8" />} 
-                        color="bg-gray-100" 
-                      />
-                    )}
-                    {activeFeature === 'pi-network' && hasPlanAccess('Free') && (
-                      <TestFeature 
-                        featureName="Pi Network Integration" 
-                        description="Access Pi Network features and earn Pi cryptocurrency." 
-                        icon={<Users className="h-8 w-8" />} 
-                        color="bg-yellow-100" 
-                      />
-                    )}
-                    {activeFeature === 'goals' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Advanced Goals" 
-                        description="Pro feature - Advanced goal setting with milestones" 
-                        icon={<Star className="h-8 w-8" />} 
-                        color="bg-purple-100" 
-                      />
-                    )}
-                    {activeFeature === 'journal' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Habit Journal" 
-                        description="Pro feature - Advanced journaling with templates" 
-                        icon={<BookOpen className="h-8 w-8" />} 
-                        color="bg-indigo-100" 
-                      />
-                    )}
-                    {activeFeature === 'photos' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Progress Photos" 
-                        description="Pro feature - Progress photos and visual tracking" 
-                        icon={<Camera className="h-8 w-8" />} 
-                        color="bg-pink-100" 
-                      />
-                    )}
-                    {activeFeature === 'custom-challenges' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Custom Challenges" 
-                        description="Pro feature - Create private challenges for friends" 
-                        icon={<Trophy className="h-8 w-8" />} 
-                        color="bg-orange-100" 
-                      />
-                    )}
-                    {activeFeature === 'streak-protection' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Streak Protection" 
-                        description="Pro feature - Protect your streaks with freeze days" 
-                        icon={<Flame className="h-8 w-8" />} 
-                        color="bg-red-100" 
-                      />
-                    )}
-                    {activeFeature === 'smart-reminders' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Smart Reminders" 
-                        description="Pro feature - AI-powered adaptive reminders" 
-                        icon={<Bell className="h-8 w-8" />} 
-                        color="bg-green-100" 
-                      />
-                    )}
-                    {activeFeature === 'support' && hasPlanAccess('Pro') && (
-                      <TestFeature 
-                        featureName="Priority Support" 
-                        description="Pro feature - Email support with 24-hour response" 
-                        icon={<MessageSquare className="h-8 w-8" />} 
-                        color="bg-blue-100" 
-                      />
-                    )}
-                    {activeFeature === 'ai-coach' && hasPlanAccess('Premium') && <AICoach />}
-                    {activeFeature === 'analytics' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="Advanced Analytics" 
-                        description="Premium feature - Deep insights and predictive analytics" 
-                        icon={<PieChart className="h-8 w-8" />} 
-                        color="bg-indigo-100" 
-                      />
-                    )}
-                    {activeFeature === 'calendar' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="Calendar Integration" 
-                        description="Premium feature - Full calendar integration" 
-                        icon={<Calendar className="h-8 w-8" />} 
-                        color="bg-purple-100" 
-                      />
-                    )}
-                    {activeFeature === 'vip-support' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="VIP Support" 
-                        description="Premium feature - 24/7 priority support with dedicated manager" 
-                        icon={<Shield className="h-8 w-8" />} 
-                        color="bg-yellow-100" 
-                      />
-                    )}
-                    {activeFeature === 'exclusive' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="Exclusive Features" 
-                        description="Premium feature - Early access to beta features" 
-                        icon={<Lightbulb className="h-8 w-8" />} 
-                        color="bg-pink-100" 
-                      />
-                    )}
-                    {activeFeature === 'courses' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="Personalized Courses" 
-                        description="Premium feature - AI-curated learning paths" 
-                        icon={<GraduationCap className="h-8 w-8" />} 
-                        color="bg-green-100" 
-                      />
-                    )}
-                    {activeFeature === 'api' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="API Access" 
-                        description="Premium feature - Developer API access" 
-                        icon={<Globe className="h-8 w-8" />} 
-                        color="bg-blue-100" 
-                      />
-                    )}
-                    {activeFeature === 'white-label' && hasPlanAccess('Premium') && (
-                      <TestFeature 
-                        featureName="White-Label Options" 
-                        description="Premium feature - Custom branding solutions" 
-                        icon={<Settings className="h-8 w-8" />} 
-                        color="bg-gray-100" 
-                      />
-                    )}
+                  {/* Feature Component */}
+                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="p-6">
+                      {/* Render the actual feature component based on activeFeature */}
+                      {activeFeature === 'habits' && hasPlanAccess('Basic') && <HabitTracker />}
+                      {activeFeature === 'tasks' && hasPlanAccess('Basic') && <TaskManager />}
+                      {activeFeature === 'challenges' && hasPlanAccess('Basic') && <CommunityChallenges />}
+                      {activeFeature === 'sync' && hasPlanAccess('Basic') && <CrossPlatformSync />}
+                      {activeFeature === 'mobile' && hasPlanAccess('Basic') && <MobileAppAccess />}
+                      {activeFeature === 'notifications' && hasPlanAccess('Basic') && <BasicNotifications />}
+                      {activeFeature === 'mood' && hasPlanAccess('Pro') && <MoodTracker />}
+                      {activeFeature === 'free-preview' && hasPlanAccess('Free') && (
+                        <TestFeature 
+                          featureName="Free Habit Preview" 
+                          description="Preview basic habit tracking. Upgrade to unlock full functionality." 
+                          icon={<BarChart3 className="h-8 w-8" />} 
+                          color="bg-gray-100" 
+                        />
+                      )}
+                      {activeFeature === 'pi-network' && hasPlanAccess('Free') && (
+                        <TestFeature 
+                          featureName="Pi Network Integration" 
+                          description="Access Pi Network features and earn Pi cryptocurrency." 
+                          icon={<Users className="h-8 w-8" />} 
+                          color="bg-yellow-100" 
+                        />
+                      )}
+                      {activeFeature === 'goals' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Advanced Goals" 
+                          description="Pro feature - Advanced goal setting with milestones" 
+                          icon={<Star className="h-8 w-8" />} 
+                          color="bg-purple-100" 
+                        />
+                      )}
+                      {activeFeature === 'journal' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Habit Journal" 
+                          description="Pro feature - Advanced journaling with templates" 
+                          icon={<BookOpen className="h-8 w-8" />} 
+                          color="bg-indigo-100" 
+                        />
+                      )}
+                      {activeFeature === 'photos' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Progress Photos" 
+                          description="Pro feature - Progress photos and visual tracking" 
+                          icon={<Camera className="h-8 w-8" />} 
+                          color="bg-pink-100" 
+                        />
+                      )}
+                      {activeFeature === 'custom-challenges' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Custom Challenges" 
+                          description="Pro feature - Create private challenges for friends" 
+                          icon={<Trophy className="h-8 w-8" />} 
+                          color="bg-orange-100" 
+                        />
+                      )}
+                      {activeFeature === 'streak-protection' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Streak Protection" 
+                          description="Pro feature - Protect your streaks with freeze days" 
+                          icon={<Flame className="h-8 w-8" />} 
+                          color="bg-red-100" 
+                        />
+                      )}
+                      {activeFeature === 'smart-reminders' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Smart Reminders" 
+                          description="Pro feature - AI-powered adaptive reminders" 
+                          icon={<Bell className="h-8 w-8" />} 
+                          color="bg-green-100" 
+                        />
+                      )}
+                      {activeFeature === 'support' && hasPlanAccess('Pro') && (
+                        <TestFeature 
+                          featureName="Priority Support" 
+                          description="Pro feature - Email support with 24-hour response" 
+                          icon={<MessageSquare className="h-8 w-8" />} 
+                          color="bg-blue-100" 
+                        />
+                      )}
+                      {activeFeature === 'ai-coach' && hasPlanAccess('Premium') && <AICoach />}
+                      {activeFeature === 'analytics' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="Advanced Analytics" 
+                          description="Premium feature - Deep insights and predictive analytics" 
+                          icon={<PieChart className="h-8 w-8" />} 
+                          color="bg-indigo-100" 
+                        />
+                      )}
+                      {activeFeature === 'calendar' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="Calendar Integration" 
+                          description="Premium feature - Full calendar integration" 
+                          icon={<Calendar className="h-8 w-8" />} 
+                          color="bg-purple-100" 
+                        />
+                      )}
+                      {activeFeature === 'vip-support' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="VIP Support" 
+                          description="Premium feature - 24/7 priority support with dedicated manager" 
+                          icon={<Shield className="h-8 w-8" />} 
+                          color="bg-yellow-100" 
+                        />
+                      )}
+                      {activeFeature === 'exclusive' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="Exclusive Features" 
+                          description="Premium feature - Early access to beta features" 
+                          icon={<Lightbulb className="h-8 w-8" />} 
+                          color="bg-pink-100" 
+                        />
+                      )}
+                      {activeFeature === 'courses' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="Personalized Courses" 
+                          description="Premium feature - AI-curated learning paths" 
+                          icon={<GraduationCap className="h-8 w-8" />} 
+                          color="bg-green-100" 
+                        />
+                      )}
+                      {activeFeature === 'api' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="API Access" 
+                          description="Premium feature - Developer API access" 
+                          icon={<Globe className="h-8 w-8" />} 
+                          color="bg-blue-100" 
+                        />
+                      )}
+                      {activeFeature === 'white-label' && hasPlanAccess('Premium') && (
+                        <TestFeature 
+                          featureName="White-Label Options" 
+                          description="Premium feature - Custom branding solutions" 
+                          icon={<Settings className="h-8 w-8" />} 
+                          color="bg-gray-100" 
+                        />
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           ) : activeTab === 'features' ? (
             // Features Tab Content (existing feature grid)

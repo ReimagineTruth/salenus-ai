@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { X, Check, Lock } from 'lucide-react';
+import { X, Check, Lock, UserPlus, LogIn } from 'lucide-react';
 import { UserPlan } from '@/hooks/useAuth';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: (email: string, password: string, plan: UserPlan) => Promise<void>;
+  onRegister?: (email: string, password: string, name: string, plan: UserPlan) => Promise<void>;
   isLoading: boolean;
   requirePayment?: boolean;
   onRequirePayment?: (plan: UserPlan) => void;
@@ -41,22 +42,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
   onLogin,
+  onRegister,
   isLoading,
   requirePayment,
   onRequirePayment
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<UserPlan>('Basic');
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
     
-    await onLogin(email, password, selectedPlan);
+    if (isSignUp && onRegister) {
+      // Sign up - should land on landing page
+      await onRegister(email, password, name || email.split('@')[0], selectedPlan);
+    } else {
+      // Sign in - should go to dashboard
+      await onLogin(email, password, selectedPlan);
+    }
+    
     if (requirePayment && onRequirePayment) {
       onRequirePayment(selectedPlan);
     }
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setEmail('');
+    setPassword('');
+    setName('');
   };
 
   if (!isOpen) return null;
@@ -66,8 +84,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
-            <CardTitle className="text-2xl font-bold text-slate-800">Sign In to Salenus A.I</CardTitle>
-            <CardDescription>Choose your plan and start your journey</CardDescription>
+            <CardTitle className="text-2xl font-bold text-slate-800">
+              {isSignUp ? 'Sign Up for Salenus A.I' : 'Sign In to Salenus A.I'}
+            </CardTitle>
+            <CardDescription>
+              {isSignUp ? 'Create your account and choose your plan' : 'Choose your plan and start your journey'}
+            </CardDescription>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -117,8 +139,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           </div>
 
-          {/* Login Form */}
+          {/* Login/Register Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required={isSignUp}
+                />
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -155,8 +191,31 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               className="w-full bg-slate-800 hover:bg-slate-700"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing In...' : `Sign In with ${selectedPlan} Plan`}
+              {isLoading ? (isSignUp ? 'Creating Account...' : 'Signing In...') : 
+                isSignUp ? `Sign Up with ${selectedPlan} Plan` : `Sign In with ${selectedPlan} Plan`}
             </Button>
+
+            {/* Toggle between Sign In and Sign Up */}
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={toggleMode}
+                className="text-sm text-slate-600 hover:text-slate-800"
+              >
+                {isSignUp ? (
+                  <>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Already have an account? Sign In
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Don't have an account? Sign Up
+                  </>
+                )}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

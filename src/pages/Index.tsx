@@ -405,6 +405,42 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     setIsUpgrade(false);
   };
 
+  const handleRegister = async (email: string, password: string, name: string, plan: any) => {
+    // For sign-up, we'll create the account but stay on landing page
+    // We'll use a different approach - create user but don't log them in
+    try {
+      // Create user in localStorage without logging them in
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const existingUser = users.find((u: any) => u.email === email);
+      
+      if (existingUser) {
+        throw new Error('User already exists. Please sign in instead.');
+      }
+      
+      const newUser = {
+        id: Date.now().toString(),
+        email,
+        name,
+        password,
+        plan,
+        hasPaid: false,
+        planExpiry: null,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      // Route to salenusaiofficial page after sign up
+      window.location.href = '/salenusaiofficial';
+      // Close modal and show success message
+      setShowLoginModal(false);
+      alert('Account created successfully! Please sign in to access your dashboard.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Error creating account');
+    }
+  };
+
   const handleUpgrade = (plan) => {
     setPendingPlan(plan);
     setPaymentOpen(true);
@@ -804,20 +840,26 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
         </>
       )}
 
-      {/* Clean, Centered Hero Section */}
-      <section className="relative bg-white min-h-[70vh] flex flex-col items-center justify-center text-center px-4 pt-24 pb-16 fade-in-element">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-gray-900 animate-fade-in">
-            Revolutionize Your Life with <span className="text-indigo-600">Salenus A.I</span>
+      {/* Original Hero Section */}
+      <section className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 min-h-[80vh] flex flex-col items-center justify-center text-center px-4 pt-24 pb-16">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <Badge className="bg-white/20 text-white border-white/30 mb-4">
+              <Pi className="h-4 w-4 mr-2" />
+              Pi-Powered AI Personal Coach
+            </Badge>
+          </div>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 text-white">
+            Revolutionize Your Life with <span className="text-cyan-300">Salenus A.I</span>
           </h1>
-          <p className="text-lg sm:text-xl text-gray-600 mb-8 animate-fade-in delay-200">
-            The first <span className="font-semibold text-indigo-600">Pi-powered AI coach</span> designed exclusively for the Pi Network ecosystem. Build habits, achieve goals, and grow personally.
+          <p className="text-lg sm:text-xl text-white/90 mb-8 max-w-3xl mx-auto">
+            The first <span className="font-semibold text-cyan-300">Pi-powered AI coach</span> designed exclusively for the <span className="font-semibold text-cyan-300">Pi Network ecosystem</span>, helping you build habits, achieve goals, and grow personally.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8 animate-fade-in delay-400">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             {user ? (
               <Button
                 size="lg"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold group"
+                className="bg-white text-indigo-600 hover:bg-gray-100 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
                 onClick={() => window.location.href = '/dashboard'}
               >
                 Access Your Dashboard
@@ -825,18 +867,18 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
             ) : (
               <Button
                 size="lg"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold group"
+                className="bg-white text-indigo-600 hover:bg-gray-100 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
                 onClick={() => setShowLoginModal(true)}
               >
                 Get Started
               </Button>
             )}
           </div>
-          <div className="flex flex-wrap justify-center gap-3 text-xs sm:text-sm text-gray-500 animate-fade-in delay-600">
-            <span className="px-3 py-1 bg-gray-100 rounded-full">Pi-Powered AI Insights</span>
-            <span className="px-3 py-1 bg-gray-100 rounded-full">Community Challenges</span>
-            <span className="px-3 py-1 bg-gray-100 rounded-full">Mobile App Access</span>
-            <span className="px-3 py-1 bg-gray-100 rounded-full">Habit Tracker</span>
+          <div className="flex flex-wrap justify-center gap-3 text-sm text-white/80">
+            <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi-Powered AI Insights</span>
+            <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi Payments Integration</span>
+            <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi Network Community</span>
+            <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi-Based Rewards</span>
           </div>
         </div>
       </section>
@@ -1672,6 +1714,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLogin}
+        onRegister={handleRegister}
         isLoading={isLoading}
         requirePayment={true}
         onRequirePayment={handleRequirePayment}

@@ -2,7 +2,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
-import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Lock, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Search, X, ChevronRight, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon } from 'lucide-react'
+import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Lock, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Search, X, ChevronRight, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Home } from 'lucide-react'
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -318,7 +318,23 @@ export const Sidebar = ({
           />
         </div>
       </div>
-      
+      {/* Home Button */}
+      <div className="px-4 pt-4">
+        <button
+          className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-200 sidebar-item w-full text-left text-slate-700 hover:bg-slate-100 mb-4"
+          onClick={() => {
+            window.location.href = '/salenusaiofficial';
+            if (isMobile) {
+              // Try to close the drawer if possible
+              const evt = new CustomEvent('closeSidebarDrawer');
+              window.dispatchEvent(evt);
+            }
+          }}
+        >
+          <Home className="h-5 w-5" />
+          <span>Home</span>
+        </button>
+      </div>
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         {/* Free Features */}
         <div className="mb-6">
