@@ -11,6 +11,20 @@ import { MoodTracker } from '@/components/features/MoodTracker';
 import { AICoach } from '@/components/features/AICoach';
 import { TestFeature } from '@/components/features/TestFeature';
 import { PaymentModal } from '@/components/PaymentModal';
+import { AdvancedGoalSetting } from '@/components/features/AdvancedGoalSetting';
+import { HabitJournal } from '@/components/features/HabitJournal';
+import { ProgressPhotos } from '@/components/features/ProgressPhotos';
+import { CustomChallenges } from '@/components/features/CustomChallenges';
+import { StreakProtection } from '@/components/features/StreakProtection';
+import { SmartReminders } from '@/components/features/SmartReminders';
+import { PrioritySupport } from '@/components/features/PrioritySupport';
+import { AdvancedAnalytics } from '@/components/features/AdvancedAnalytics';
+import { CalendarIntegration } from '@/components/features/CalendarIntegration';
+import { VIPSupport } from '@/components/features/VIPSupport';
+import { ExclusiveFeatures } from '@/components/features/ExclusiveFeatures';
+import { PersonalizedCourses } from '@/components/features/PersonalizedCourses';
+import { APIAccess } from '@/components/features/APIAccess';
+import { WhiteLabel } from '@/components/features/WhiteLabel';
 import { useAuth, UserPlan } from '@/hooks/useAuth';
 import { FeatureCard } from '@/components/FeatureCard';
 import { FeatureLoader } from '@/components/ui/Loader';
@@ -874,119 +888,21 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                           color="bg-yellow-100" 
                         />
                       )}
-                      {activeFeature === 'goals' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Advanced Goals" 
-                          description="Pro feature - Advanced goal setting with milestones" 
-                          icon={<Star className="h-8 w-8" />} 
-                          color="bg-purple-100" 
-                        />
-                      )}
-                      {activeFeature === 'journal' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Habit Journal" 
-                          description="Pro feature - Advanced journaling with templates" 
-                          icon={<BookOpen className="h-8 w-8" />} 
-                          color="bg-indigo-100" 
-                        />
-                      )}
-                      {activeFeature === 'photos' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Progress Photos" 
-                          description="Pro feature - Progress photos and visual tracking" 
-                          icon={<Camera className="h-8 w-8" />} 
-                          color="bg-pink-100" 
-                        />
-                      )}
-                      {activeFeature === 'custom-challenges' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Custom Challenges" 
-                          description="Pro feature - Create private challenges for friends" 
-                          icon={<Trophy className="h-8 w-8" />} 
-                          color="bg-orange-100" 
-                        />
-                      )}
-                      {activeFeature === 'streak-protection' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Streak Protection" 
-                          description="Pro feature - Protect your streaks with freeze days" 
-                          icon={<Flame className="h-8 w-8" />} 
-                          color="bg-red-100" 
-                        />
-                      )}
-                      {activeFeature === 'smart-reminders' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Smart Reminders" 
-                          description="Pro feature - AI-powered adaptive reminders" 
-                          icon={<Bell className="h-8 w-8" />} 
-                          color="bg-green-100" 
-                        />
-                      )}
-                      {activeFeature === 'support' && hasPlanAccess('Pro') && (
-                        <TestFeature 
-                          featureName="Priority Support" 
-                          description="Pro feature - Email support with 24-hour response" 
-                          icon={<MessageSquare className="h-8 w-8" />} 
-                          color="bg-blue-100" 
-                        />
-                      )}
+                      {activeFeature === 'goals' && hasPlanAccess('Pro') && <AdvancedGoalSetting onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'journal' && hasPlanAccess('Pro') && <HabitJournal onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'photos' && hasPlanAccess('Pro') && <ProgressPhotos onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'custom-challenges' && hasPlanAccess('Pro') && <CustomChallenges onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'streak-protection' && hasPlanAccess('Pro') && <StreakProtection onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'smart-reminders' && hasPlanAccess('Pro') && <SmartReminders onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'support' && hasPlanAccess('Pro') && <PrioritySupport onUpgrade={() => setPaymentOpen(true)} />}
                       {activeFeature === 'ai-coach' && hasPlanAccess('Premium') && <AICoach />}
-                      {activeFeature === 'analytics' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="Advanced Analytics" 
-                          description="Premium feature - Deep insights and predictive analytics" 
-                          icon={<PieChart className="h-8 w-8" />} 
-                          color="bg-indigo-100" 
-                        />
-                      )}
-                      {activeFeature === 'calendar' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="Calendar Integration" 
-                          description="Premium feature - Full calendar integration" 
-                          icon={<Calendar className="h-8 w-8" />} 
-                          color="bg-purple-100" 
-                        />
-                      )}
-                      {activeFeature === 'vip-support' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="VIP Support" 
-                          description="Premium feature - 24/7 priority support with dedicated manager" 
-                          icon={<Shield className="h-8 w-8" />} 
-                          color="bg-yellow-100" 
-                        />
-                      )}
-                      {activeFeature === 'exclusive' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="Exclusive Features" 
-                          description="Premium feature - Early access to beta features" 
-                          icon={<Lightbulb className="h-8 w-8" />} 
-                          color="bg-pink-100" 
-                        />
-                      )}
-                      {activeFeature === 'courses' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="Personalized Courses" 
-                          description="Premium feature - AI-curated learning paths" 
-                          icon={<GraduationCap className="h-8 w-8" />} 
-                          color="bg-green-100" 
-                        />
-                      )}
-                      {activeFeature === 'api' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="API Access" 
-                          description="Premium feature - Developer API access" 
-                          icon={<Globe className="h-8 w-8" />} 
-                          color="bg-blue-100" 
-                        />
-                      )}
-                      {activeFeature === 'white-label' && hasPlanAccess('Premium') && (
-                        <TestFeature 
-                          featureName="White-Label Options" 
-                          description="Premium feature - Custom branding solutions" 
-                          icon={<Settings className="h-8 w-8" />} 
-                          color="bg-gray-100" 
-                        />
-                      )}
+                      {activeFeature === 'analytics' && hasPlanAccess('Premium') && <AdvancedAnalytics onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'calendar' && hasPlanAccess('Premium') && <CalendarIntegration onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'vip-support' && hasPlanAccess('Premium') && <VIPSupport onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'exclusive' && hasPlanAccess('Premium') && <ExclusiveFeatures onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'courses' && hasPlanAccess('Premium') && <PersonalizedCourses onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'api' && hasPlanAccess('Premium') && <APIAccess onUpgrade={() => setPaymentOpen(true)} />}
+                      {activeFeature === 'white-label' && hasPlanAccess('Premium') && <WhiteLabel onUpgrade={() => setPaymentOpen(true)} />}
                     </div>
                   </div>
                 </>

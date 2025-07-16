@@ -165,13 +165,15 @@ export const useAuth = () => {
     if (!user) return false;
     
     const featureAccess: Record<string, UserPlan[]> = {
+      // Free features
+      'habit_tracking': ['Free', 'Basic', 'Pro', 'Premium'],
+      'task_management': ['Free', 'Basic', 'Pro', 'Premium'],
+      'basic_notifications': ['Free', 'Basic', 'Pro', 'Premium'],
+      
       // Basic features
-      'habit_tracking': ['Basic', 'Pro', 'Premium'],
-      'task_management': ['Basic', 'Pro', 'Premium'],
       'community_challenges': ['Basic', 'Pro', 'Premium'],
       'cross_platform_sync': ['Basic', 'Pro', 'Premium'],
       'mobile_app': ['Basic', 'Pro', 'Premium'],
-      'basic_notifications': ['Basic', 'Pro', 'Premium'],
       
       // Pro features
       'mood_tracking': ['Pro', 'Premium'],
@@ -187,11 +189,11 @@ export const useAuth = () => {
       'ai_coaching': ['Premium'],
       'advanced_analytics': ['Premium'],
       'calendar_integration': ['Premium'],
-      'predictive_insights': ['Premium'],
       'personalized_courses': ['Premium'],
       'api_access': ['Premium'],
       'white_label': ['Premium'],
-      'vip_support': ['Premium']
+      'vip_support': ['Premium'],
+      'exclusive_features': ['Premium']
     };
     
     const requiredPlan = featureAccess[featureName];
@@ -250,11 +252,11 @@ export const useAuth = () => {
         'ai_coaching',
         'advanced_analytics',
         'calendar_integration',
-        'predictive_insights',
         'personalized_courses',
         'api_access',
         'white_label',
-        'vip_support'
+        'vip_support',
+        'exclusive_features'
       ]
     };
     
