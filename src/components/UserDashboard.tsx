@@ -38,6 +38,9 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { MobileLayout } from '@/components/MobileLayout';
+import { MobileHabitTracker } from '@/components/mobile/MobileHabitTracker';
+import { MobileTaskManager } from '@/components/mobile/MobileTaskManager';
 
 const allFeatures = [
   // Free
