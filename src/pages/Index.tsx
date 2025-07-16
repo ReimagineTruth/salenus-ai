@@ -431,8 +431,8 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
       
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
-      // Route to salenusaiofficial page after sign up
-      window.location.href = '/salenusaiofficial';
+      // Route to landing page after sign up
+      window.location.href = '/';
       // Close modal and show success message
       setShowLoginModal(false);
       alert('Account created successfully! Please sign in to access your dashboard.');
