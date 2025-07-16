@@ -11,13 +11,19 @@ import { MoodTracker } from '@/components/features/MoodTracker';
 import { AICoach } from '@/components/features/AICoach';
 import { TestFeature } from '@/components/features/TestFeature';
 import { PaymentModal } from '@/components/PaymentModal';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, UserPlan } from '@/hooks/useAuth';
 import { FeatureCard } from '@/components/FeatureCard';
 import { FeatureLoader } from '@/components/ui/Loader';
-import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Heart, Sparkles, Star, Camera, Trophy, BookOpen, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Lock } from 'lucide-react';
+import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Heart, Sparkles, Star, Camera, Trophy, BookOpen, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Lock, Search, Plus, Home, Menu, X, ChevronLeft, ChevronRight, RefreshCw, Settings as SettingsIcon, User, LogOut, HelpCircle, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Download, Upload, Trash2, Key } from 'lucide-react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PanelLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 
 const allFeatures = [
   // Free
@@ -53,7 +59,7 @@ const allFeatures = [
 interface UserDashboardProps {
   user?: any;
   onLogout?: () => void;
-  onUpgrade?: (plan: string) => void;
+  onUpgrade?: (plan: UserPlan) => void;
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, onUpgrade }) => {
@@ -63,26 +69,161 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
   const location = useLocation();
 
   const [paymentOpen, setPaymentOpen] = React.useState(false);
-  const [selectedPlan, setSelectedPlan] = React.useState(null);
+  const [selectedPlan, setSelectedPlan] = React.useState<UserPlan | null>(null);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [featureLoading, setFeatureLoading] = React.useState(false);
   const [currentFeature, setCurrentFeature] = React.useState('');
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [showSearch, setShowSearch] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = React.useState(false);
+
+  // Add state to track which feature is active in overview
+  const [activeFeature, setActiveFeature] = React.useState(() => {
+    // Default to first available feature based on user plan
+    if (user?.plan === 'Free') return 'free-preview';
+    if (user?.plan === 'Basic') return 'habits';
+    if (user?.plan === 'Pro') return 'habits';
+    if (user?.plan === 'Premium') return 'habits';
+    return 'habits';
+  });
+
+  // Update tab state to default to overview
+  const [activeTab, setActiveTab] = React.useState(() => {
+    return localStorage.getItem('dashboardTab') || 'overview';
+  });
+
+  // Add settings state
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [profileData, setProfileData] = React.useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    avatar: user?.avatar || '',
+    notifications: {
+      email: true,
+      push: true,
+      sms: false
+    },
+    privacy: {
+      profilePublic: false,
+      shareProgress: true,
+      allowAnalytics: true
+    }
+  });
+
+  // Add cancellation state
+  const [showCancellationModal, setShowCancellationModal] = React.useState(false);
+  const [cancellationReason, setCancellationReason] = React.useState('');
+
+  React.useEffect(() => {
+    localStorage.setItem('dashboardTab', activeTab);
+  }, [activeTab]);
 
   // Debug logging
   console.log('UserDashboard - User data:', user);
   console.log('UserDashboard - User plan:', user?.plan);
   console.log('UserDashboard - Has paid:', user?.hasPaid);
 
-  // Check if subscription is expired
-  const isExpired = user && user.planExpiry && new Date(user.planExpiry) < new Date();
+  // Check if subscription is expired (only for paid plans)
+  const isExpired = user && user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) < new Date();
 
-  // Check if subscription is expiring soon (within 7 days)
-  const isExpiringSoon = user && user.planExpiry && !isExpired && 
+  // Check if subscription is expiring soon (within 7 days, only for paid plans)
+  const isExpiringSoon = user && user.plan !== 'Free' && user.planExpiry && !isExpired && 
     new Date(user.planExpiry).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000;
 
-  // If expired, force payment modal for renewal
+  // Define payment handlers early to avoid hoisting issues
+  const handlePay = async () => {
+    if (!selectedPlan) return;
+    await upgradePlan(selectedPlan as UserPlan);
+    setPaymentOpen(false);
+  };
+
+  const handleChangePlan = () => {
+    setPaymentOpen(false);
+  };
+
+  // Add cancellation handler
+  const handleCancelPlan = () => {
+    // Update user plan to Free
+    const updatedUser = {
+      ...user,
+      plan: 'Free',
+      planExpiry: null,
+      hasPaid: false
+    };
+    
+    // Update localStorage
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    
+    // Close modal
+    setShowCancellationModal(false);
+    setCancellationReason('');
+    
+    // Show success message
+    alert('Your plan has been cancelled. You now have access to Free features only. No refunds will be issued.');
+  };
+
+  // Mobile-specific handlers
+  const handlePullToRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+      // Refresh data here
+    }, 1000);
+  };
+
+  const handleSwipeAction = (direction: 'left' | 'right') => {
+    if (direction === 'left') {
+      // Quick action (e.g., mark complete)
+      console.log('Swipe left action');
+    } else {
+      // Navigation action
+      console.log('Swipe right action');
+    }
+  };
+
+  // Desktop-specific handlers
+  const handleKeyboardShortcuts = (event: KeyboardEvent) => {
+    if (event.ctrlKey || event.metaKey) {
+      switch (event.key) {
+        case 'k':
+          event.preventDefault();
+          setShowSearch(true);
+          break;
+        case 'b':
+          event.preventDefault();
+          setDrawerOpen(!drawerOpen);
+          break;
+        case 'h':
+          event.preventDefault();
+          navigate('habits');
+          break;
+        case 't':
+          event.preventDefault();
+          navigate('tasks');
+          break;
+        case 'm':
+          event.preventDefault();
+          navigate('mood');
+          break;
+        case '?':
+          event.preventDefault();
+          setShowKeyboardShortcuts(true);
+          break;
+      }
+    }
+  };
+
   React.useEffect(() => {
-    if (isExpired) {
+    if (!isMobile) {
+      document.addEventListener('keydown', handleKeyboardShortcuts);
+      return () => document.removeEventListener('keydown', handleKeyboardShortcuts);
+    }
+  }, [isMobile, drawerOpen]);
+
+  // If expired, force payment modal for renewal (only for paid plans)
+  React.useEffect(() => {
+    if (isExpired && user.plan !== 'Free') {
       setSelectedPlan(user.plan);
       setPaymentOpen(true);
     }
@@ -93,7 +234,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     return (
       <PaymentModal
         isOpen={paymentOpen}
-        plan={selectedPlan}
+        plan={selectedPlan as UserPlan}
         onPay={handlePay}
         onChangePlan={handleChangePlan}
         isLoading={featureLoading}
@@ -131,7 +272,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
   };
 
   // For upgrades, call onUpgrade from parent (Index.tsx)
-  const handleLockedFeatureClick = (feature: string, minPlan: string) => {
+  const handleLockedFeatureClick = (feature: string, minPlan: UserPlan) => {
     if (onUpgrade) {
       onUpgrade(minPlan);
       setDrawerOpen(false);
@@ -142,68 +283,147 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     }
   };
 
-  const handlePay = async () => {
-    if (!selectedPlan) return;
-    await upgradePlan(selectedPlan);
-    setPaymentOpen(false);
-  };
-
-  const handleChangePlan = () => {
-    setPaymentOpen(false);
-  };
-
   // Filter features based on user's plan
   const availableFeatures = allFeatures.filter(feature => hasPlanAccess(feature.requiredPlan));
 
-  // Handle feature navigation with loading
+  // Function to handle feature navigation from sidebar
   const handleFeatureNavigation = (featureName: string, route: string) => {
     setFeatureLoading(true);
     setCurrentFeature(featureName);
+    setActiveFeature(route);
+    setActiveTab('overview'); // Switch to overview tab when navigating to a feature
     
     // Simulate loading time
     setTimeout(() => {
-      navigate(route);
       setFeatureLoading(false);
       setCurrentFeature('');
-    }, 1500); // 1.5 seconds loading time
+    }, 1500);
+  };
+
+  // Get current breadcrumb path
+  const getBreadcrumbPath = () => {
+    const path = location.pathname.split('/').pop() || 'dashboard';
+    return path.charAt(0).toUpperCase() + path.slice(1);
   };
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar for desktop, Drawer for mobile */}
+      {/* Enhanced Sidebar for desktop, Drawer for mobile */}
       {isMobile ? (
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <SheetContent side="left" className="p-0 w-64 max-w-full">
-            <Sidebar onLockedFeatureClick={handleLockedFeatureClick} userPlan={user.plan} />
+          <SheetContent side="left" className="p-0 w-80 max-w-full">
+            <Sidebar onLockedFeatureClick={handleFeatureNavigation} userPlan={user.plan} />
           </SheetContent>
         </Sheet>
       ) : (
-        <Sidebar onLockedFeatureClick={handleLockedFeatureClick} userPlan={user.plan} />
+        <Sidebar onLockedFeatureClick={handleFeatureNavigation} userPlan={user.plan} />
       )}
+      
       <main className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 bg-white">
+        {/* Enhanced Header with Mobile/Desktop optimizations */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-4 border-b border-slate-200 bg-white shadow-sm md:px-8 md:py-6">
           <div className="flex items-center gap-3">
             {isMobile && (
               <button
-                className="mr-3 p-2 rounded hover:bg-slate-100 focus:outline-none"
+                className="mr-3 p-2 rounded-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 onClick={() => setDrawerOpen(true)}
                 aria-label="Open menu"
               >
-                <PanelLeft className="h-6 w-6 text-slate-700" />
+                <Menu className="h-6 w-6 text-slate-700" />
               </button>
             )}
-            <span className="text-xl font-bold text-navy-900">Salenus A.I Dashboard</span>
-            <span className="ml-3 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold align-middle">{user.plan} Plan</span>
+            
+            {/* Breadcrumb Navigation */}
+            <div className="hidden md:flex items-center space-x-2">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="/dashboard" className="flex items-center">
+                      <Home className="h-4 w-4 mr-1" />
+                      Dashboard
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>{getBreadcrumbPath()}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+
+            <span className="text-xl md:text-2xl font-bold text-navy-900">Salenus A.I Dashboard</span>
+            <Badge variant="secondary" className="ml-3">
+              {user.plan} Plan
+            </Badge>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-slate-700">Welcome, {user.name || user.email}</span>
-            <button onClick={handleSignOut} className="px-4 py-2 rounded bg-slate-800 text-white font-semibold hover:bg-slate-700">Sign Out</button>
+          
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Search Bar */}
+            {!isMobile && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search features..."
+                  className="pl-10 w-64"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <User className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>{user.name || user.email}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <SettingsIcon className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <span>Help</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Keyboard Shortcuts Help */}
+            {!isMobile && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowKeyboardShortcuts(true)}
+                      className="hidden lg:flex"
+                    >
+                      <Keyboard className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Keyboard shortcuts</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
         
-        {/* Expiring Soon Banner */}
+        {/* Enhanced Expiring Soon Banner */}
         {isExpiringSoon && (
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b border-yellow-200 px-8 py-4">
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b border-yellow-200 px-4 md:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
@@ -213,18 +433,20 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                   } days
                 </span>
               </div>
-              <button 
-                onClick={() => handleLockedFeatureClick('renew', user.plan)}
-                className="text-sm text-yellow-700 hover:text-yellow-900 font-medium bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded-md transition-colors"
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => handleLockedFeatureClick('renew', user.plan as UserPlan)}
+                className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
               >
                 Renew Now →
-              </button>
+              </Button>
             </div>
           </div>
         )}
         
-        {/* Plan Status Banner */}
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 px-8 py-4">
+        {/* Enhanced Plan Status Banner */}
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 px-4 md:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Sparkles className="h-5 w-5 text-indigo-600" />
@@ -233,7 +455,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              {/* Plan Expiration Panel */}
+              {/* Enhanced Plan Expiration Panel */}
               {user.plan !== 'Free' && user.planExpiry && (
                 <div className="bg-white rounded-lg px-4 py-2 border border-indigo-200 shadow-sm">
                   <div className="flex items-center space-x-2">
@@ -243,7 +465,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                         {user.planExpiry ? (
                           <>
                             Expires: {new Date(user.planExpiry).toLocaleDateString()}
-                            <span className="ml-2 px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                            <Badge variant="outline" className="ml-2">
                               {(() => {
                                 const expiryDate = new Date(user.planExpiry);
                                 const now = new Date();
@@ -260,31 +482,10 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                                   return `${Math.ceil(diffDays / 30)} months left`;
                                 }
                               })()}
-                            </span>
+                            </Badge>
                           </>
                         ) : (
                           'No expiry date'
-                        )}
-                      </div>
-                      <div className="text-indigo-600">
-                        {user.planExpiry ? (
-                          (() => {
-                            const expiryDate = new Date(user.planExpiry);
-                            const now = new Date();
-                            const diffTime = expiryDate.getTime() - now.getTime();
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                            
-                            // Determine billing cycle based on expiry date
-                            if (diffDays > 365) {
-                              return 'Yearly billing';
-                            } else if (diffDays > 30) {
-                              return 'Monthly billing';
-                            } else {
-                              return 'Trial period';
-                            }
-                          })()
-                        ) : (
-                          'Free plan'
                         )}
                       </div>
                     </div>
@@ -292,7 +493,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                 </div>
               )}
 
-              {/* Auto-Renewal Status */}
+              {/* Enhanced Auto-Renewal Status */}
               {user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) > new Date() && (
                 <div className="bg-green-50 rounded-lg px-3 py-2 border border-green-200 shadow-sm">
                   <div className="flex items-center space-x-2">
@@ -308,293 +509,1040 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
               )}
               
               {user.plan !== 'Premium' && (
-                <button 
+                <Button 
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleLockedFeatureClick('upgrade', 
-                    user.plan === 'Free' ? 'Basic' : 
-                    user.plan === 'Basic' ? 'Pro' : 'Premium'
+                    (user.plan === 'Free' ? 'Basic' : 
+                    user.plan === 'Basic' ? 'Pro' : 'Premium') as UserPlan
                   )}
-                  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                  className="text-indigo-600 border-indigo-300 hover:bg-indigo-100"
                 >
                   Upgrade to {user.plan === 'Free' ? 'Basic' : user.plan === 'Basic' ? 'Pro' : 'Premium'} →
-                </button>
+                </Button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="p-8">
-          {/* Show loading state when navigating */}
-          {featureLoading ? (
-            <FeatureLoader featureName={currentFeature} />
-          ) : (
-            <>
-              {/* Feature Overview Section */}
-              <div className="mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Available Features</h2>
-                <p className="text-gray-600 mb-6">
-                  Based on your {user.plan} plan, you have access to {availableFeatures.length} features.
-                </p>
+        {/* Enhanced Main Content Area */}
+        <div className="p-4 md:p-8">
+          {/* Tab Bar */}
+          <div className="flex gap-2 mb-6 border-b border-slate-200">
+            <button
+              className={`px-4 py-2 font-semibold rounded-t-md transition-all duration-200 focus:outline-none ${activeTab === 'overview' ? 'bg-white border-x border-t border-slate-200 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              Overview
+            </button>
+            <button
+              className={`px-4 py-2 font-semibold rounded-t-md transition-all duration-200 focus:outline-none ${activeTab === 'features' ? 'bg-white border-x border-t border-slate-200 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
+              onClick={() => setActiveTab('features')}
+            >
+              Features
+            </button>
+            <button
+              className={`px-4 py-2 font-semibold rounded-t-md transition-all duration-200 focus:outline-none ${activeTab === 'settings' ? 'bg-white border-x border-t border-slate-200 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              Settings
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'overview' ? (
+            // Overview Tab Content - Show actual feature component
+            <div className="space-y-6">
+              {/* Feature Header */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {activeFeature === 'habits' && 'Habit Tracking'}
+                      {activeFeature === 'tasks' && 'Task Management'}
+                      {activeFeature === 'challenges' && 'Community Challenges'}
+                      {activeFeature === 'sync' && 'Cross-Platform Sync'}
+                      {activeFeature === 'mobile' && 'Mobile App Access'}
+                      {activeFeature === 'notifications' && 'Basic Notifications'}
+                      {activeFeature === 'mood' && 'Mood Tracker'}
+                      {activeFeature === 'free-preview' && 'Free Habit Preview'}
+                      {activeFeature === 'pi-network' && 'Pi Network Integration'}
+                      {activeFeature === 'goals' && 'Advanced Goals'}
+                      {activeFeature === 'journal' && 'Habit Journal'}
+                      {activeFeature === 'photos' && 'Progress Photos'}
+                      {activeFeature === 'custom-challenges' && 'Custom Challenges'}
+                      {activeFeature === 'streak-protection' && 'Streak Protection'}
+                      {activeFeature === 'smart-reminders' && 'Smart Reminders'}
+                      {activeFeature === 'support' && 'Priority Support'}
+                      {activeFeature === 'ai-coach' && 'AI Personal Coach'}
+                      {activeFeature === 'analytics' && 'Advanced Analytics'}
+                      {activeFeature === 'calendar' && 'Calendar Integration'}
+                      {activeFeature === 'vip-support' && 'VIP Support'}
+                      {activeFeature === 'exclusive' && 'Exclusive Features'}
+                      {activeFeature === 'courses' && 'Personalized Courses'}
+                      {activeFeature === 'api' && 'API Access'}
+                      {activeFeature === 'white-label' && 'White-Label Options'}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {activeFeature === 'habits' && 'Track your daily habits and build streaks'}
+                      {activeFeature === 'tasks' && 'Manage your tasks and stay organized'}
+                      {activeFeature === 'challenges' && 'Join community challenges and compete'}
+                      {activeFeature === 'sync' && 'Sync your data across all devices'}
+                      {activeFeature === 'mobile' && 'Access Salenus A.I on mobile devices'}
+                      {activeFeature === 'notifications' && 'Get smart reminders and notifications'}
+                      {activeFeature === 'mood' && 'Track your mood and get insights'}
+                      {activeFeature === 'free-preview' && 'Preview basic habit tracking features'}
+                      {activeFeature === 'pi-network' && 'Integrate with Pi Network ecosystem'}
+                      {activeFeature === 'goals' && 'Set and track advanced goals'}
+                      {activeFeature === 'journal' && 'Journal your habits and progress'}
+                      {activeFeature === 'photos' && 'Track progress with photos'}
+                      {activeFeature === 'custom-challenges' && 'Create custom challenges'}
+                      {activeFeature === 'streak-protection' && 'Protect your streaks'}
+                      {activeFeature === 'smart-reminders' && 'Get AI-powered reminders'}
+                      {activeFeature === 'support' && 'Get priority customer support'}
+                      {activeFeature === 'ai-coach' && 'Get personalized AI coaching'}
+                      {activeFeature === 'analytics' && 'Advanced analytics and insights'}
+                      {activeFeature === 'calendar' && 'Full calendar integration'}
+                      {activeFeature === 'vip-support' && '24/7 VIP support'}
+                      {activeFeature === 'exclusive' && 'Access exclusive features'}
+                      {activeFeature === 'courses' && 'Personalized learning courses'}
+                      {activeFeature === 'api' && 'Developer API access'}
+                      {activeFeature === 'white-label' && 'White-label solutions'}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{user.plan} Plan</Badge>
+                </div>
               </div>
 
-              {/* Plan Information Panel */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8 shadow-sm hover:shadow-md transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Plan Details</h3>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    user.plan === 'Free' ? 'bg-gray-100 text-gray-700' :
-                    user.plan === 'Basic' ? 'bg-blue-100 text-blue-700' :
-                    user.plan === 'Pro' ? 'bg-purple-100 text-purple-700' :
-                    'bg-indigo-100 text-indigo-700'
-                  }`}>
-                    {user.plan} Plan
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Plan Status */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-gray-700">Plan Status</h4>
-                    <div className="text-sm text-gray-600">
-                      {user.plan === 'Free' ? (
+              {/* Feature Component */}
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                {featureLoading ? (
+                  <FeatureLoader featureName={currentFeature} />
+                ) : (
+                  <div className="p-6">
+                    {/* Render the actual feature component based on activeFeature */}
+                    {activeFeature === 'habits' && hasPlanAccess('Basic') && <HabitTracker />}
+                    {activeFeature === 'tasks' && hasPlanAccess('Basic') && <TaskManager />}
+                    {activeFeature === 'challenges' && hasPlanAccess('Basic') && <CommunityChallenges />}
+                    {activeFeature === 'sync' && hasPlanAccess('Basic') && <CrossPlatformSync />}
+                    {activeFeature === 'mobile' && hasPlanAccess('Basic') && <MobileAppAccess />}
+                    {activeFeature === 'notifications' && hasPlanAccess('Basic') && <BasicNotifications />}
+                    {activeFeature === 'mood' && hasPlanAccess('Pro') && <MoodTracker />}
+                    {activeFeature === 'free-preview' && hasPlanAccess('Free') && (
+                      <TestFeature 
+                        featureName="Free Habit Preview" 
+                        description="Preview basic habit tracking. Upgrade to unlock full functionality." 
+                        icon={<BarChart3 className="h-8 w-8" />} 
+                        color="bg-gray-100" 
+                      />
+                    )}
+                    {activeFeature === 'pi-network' && hasPlanAccess('Free') && (
+                      <TestFeature 
+                        featureName="Pi Network Integration" 
+                        description="Access Pi Network features and earn Pi cryptocurrency." 
+                        icon={<Users className="h-8 w-8" />} 
+                        color="bg-yellow-100" 
+                      />
+                    )}
+                    {activeFeature === 'goals' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Advanced Goals" 
+                        description="Pro feature - Advanced goal setting with milestones" 
+                        icon={<Star className="h-8 w-8" />} 
+                        color="bg-purple-100" 
+                      />
+                    )}
+                    {activeFeature === 'journal' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Habit Journal" 
+                        description="Pro feature - Advanced journaling with templates" 
+                        icon={<BookOpen className="h-8 w-8" />} 
+                        color="bg-indigo-100" 
+                      />
+                    )}
+                    {activeFeature === 'photos' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Progress Photos" 
+                        description="Pro feature - Progress photos and visual tracking" 
+                        icon={<Camera className="h-8 w-8" />} 
+                        color="bg-pink-100" 
+                      />
+                    )}
+                    {activeFeature === 'custom-challenges' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Custom Challenges" 
+                        description="Pro feature - Create private challenges for friends" 
+                        icon={<Trophy className="h-8 w-8" />} 
+                        color="bg-orange-100" 
+                      />
+                    )}
+                    {activeFeature === 'streak-protection' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Streak Protection" 
+                        description="Pro feature - Protect your streaks with freeze days" 
+                        icon={<Flame className="h-8 w-8" />} 
+                        color="bg-red-100" 
+                      />
+                    )}
+                    {activeFeature === 'smart-reminders' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Smart Reminders" 
+                        description="Pro feature - AI-powered adaptive reminders" 
+                        icon={<Bell className="h-8 w-8" />} 
+                        color="bg-green-100" 
+                      />
+                    )}
+                    {activeFeature === 'support' && hasPlanAccess('Pro') && (
+                      <TestFeature 
+                        featureName="Priority Support" 
+                        description="Pro feature - Email support with 24-hour response" 
+                        icon={<MessageSquare className="h-8 w-8" />} 
+                        color="bg-blue-100" 
+                      />
+                    )}
+                    {activeFeature === 'ai-coach' && hasPlanAccess('Premium') && <AICoach />}
+                    {activeFeature === 'analytics' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="Advanced Analytics" 
+                        description="Premium feature - Deep insights and predictive analytics" 
+                        icon={<PieChart className="h-8 w-8" />} 
+                        color="bg-indigo-100" 
+                      />
+                    )}
+                    {activeFeature === 'calendar' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="Calendar Integration" 
+                        description="Premium feature - Full calendar integration" 
+                        icon={<Calendar className="h-8 w-8" />} 
+                        color="bg-purple-100" 
+                      />
+                    )}
+                    {activeFeature === 'vip-support' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="VIP Support" 
+                        description="Premium feature - 24/7 priority support with dedicated manager" 
+                        icon={<Shield className="h-8 w-8" />} 
+                        color="bg-yellow-100" 
+                      />
+                    )}
+                    {activeFeature === 'exclusive' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="Exclusive Features" 
+                        description="Premium feature - Early access to beta features" 
+                        icon={<Lightbulb className="h-8 w-8" />} 
+                        color="bg-pink-100" 
+                      />
+                    )}
+                    {activeFeature === 'courses' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="Personalized Courses" 
+                        description="Premium feature - AI-curated learning paths" 
+                        icon={<GraduationCap className="h-8 w-8" />} 
+                        color="bg-green-100" 
+                      />
+                    )}
+                    {activeFeature === 'api' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="API Access" 
+                        description="Premium feature - Developer API access" 
+                        icon={<Globe className="h-8 w-8" />} 
+                        color="bg-blue-100" 
+                      />
+                    )}
+                    {activeFeature === 'white-label' && hasPlanAccess('Premium') && (
+                      <TestFeature 
+                        featureName="White-Label Options" 
+                        description="Premium feature - Custom branding solutions" 
+                        icon={<Settings className="h-8 w-8" />} 
+                        color="bg-gray-100" 
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : activeTab === 'features' ? (
+            // Features Tab Content (existing feature grid)
+            <div>
+              {/* Show loading state when navigating */}
+              {featureLoading ? (
+                <FeatureLoader featureName={currentFeature} />
+              ) : (
+                <>
+                  {/* Enhanced Feature Overview Section */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Available Features</h2>
+                        <p className="text-gray-600">
+                          Based on your {user.plan} plan, you have access to {availableFeatures.length} features.
+                        </p>
+                      </div>
+                      
+                      {/* Desktop: Quick Actions */}
+                      {!isMobile && (
                         <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span>Active (Free)</span>
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <div className={`w-2 h-2 rounded-full ${
-                              user.planExpiry && new Date(user.planExpiry) > new Date() 
-                                ? 'bg-green-500' 
-                                : 'bg-red-500'
-                            }`}></div>
-                            <span>{user.planExpiry && new Date(user.planExpiry) > new Date() ? 'Active' : 'Expired'}</span>
-                          </div>
-                          {user.planExpiry && (
-                            <div className="text-xs text-gray-500">
-                              Since: {new Date(user.planExpiry).toLocaleDateString()}
-                            </div>
-                          )}
+                          <Button variant="outline" size="sm">
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Refresh
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <SettingsIcon className="h-4 w-4 mr-2" />
+                            Settings
+                          </Button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Billing Information */}
-                  {user.plan !== 'Free' && (
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-gray-700">Billing Information</h4>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        {user.planExpiry ? (
-                          <>
-                            <div>
-                              <span className="font-medium">Cycle:</span> {
-                                (() => {
-                                  const expiryDate = new Date(user.planExpiry);
-                                  const now = new Date();
-                                  const diffTime = expiryDate.getTime() - now.getTime();
-                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                  
-                                  if (diffDays > 365) {
-                                    return 'Yearly';
-                                  } else if (diffDays > 30) {
-                                    return 'Monthly';
-                                  } else {
-                                    return 'Trial';
-                                  }
-                                })()
-                              }
+                  {/* Enhanced Plan Information Panel */}
+                  <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Plan Details</h3>
+                      <Badge variant={
+                        user.plan === 'Free' ? 'secondary' :
+                        user.plan === 'Basic' ? 'default' :
+                        user.plan === 'Pro' ? 'outline' : 'default'
+                      }>
+                        {user.plan} Plan
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Plan Status */}
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-gray-700">Plan Status</h4>
+                        <div className="text-sm text-gray-600">
+                          {user.plan === 'Free' ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span>Active (Free)</span>
                             </div>
-                            <div>
-                              <span className="font-medium">Next Payment:</span> {new Date(user.planExpiry).toLocaleDateString()}
-                            </div>
-                            <div>
-                              <span className="font-medium">Price:</span> {
-                                (() => {
-                                  const expiryDate = new Date(user.planExpiry);
-                                  const now = new Date();
-                                  const diffTime = expiryDate.getTime() - now.getTime();
-                                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                  
-                                  if (diffDays > 365) {
-                                    return user.plan === 'Basic' ? '50 Pi/year' : 
-                                           user.plan === 'Pro' ? '100 Pi/year' : '150 Pi/year';
-                                  } else {
-                                    return user.plan === 'Basic' ? '5 Pi/month' : 
-                                           user.plan === 'Pro' ? '10 Pi/month' : '15 Pi/month';
-                                  }
-                                })()
-                              }
-                            </div>
-                            
-                            {/* Billing Cycle Progress Bar */}
-                            {(() => {
-                              const expiryDate = new Date(user.planExpiry);
-                              const now = new Date();
-                              const totalDays = expiryDate.getTime() - now.getTime() > 365 * 24 * 60 * 60 * 1000 ? 365 : 30;
-                              const remainingDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                              const progressPercentage = Math.max(0, Math.min(100, ((totalDays - remainingDays) / totalDays) * 100));
-                              
-                              return (
-                                <div className="mt-3">
-                                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                    <span>Billing Progress</span>
-                                    <span>{Math.round(progressPercentage)}% used</span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div 
-                                      className={`h-2 rounded-full transition-all duration-300 ${
-                                        progressPercentage > 80 ? 'bg-red-500' :
-                                        progressPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                                      }`}
-                                      style={{ width: `${progressPercentage}%` }}
-                                    ></div>
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {remainingDays > 0 ? `${remainingDays} days remaining` : 'Expired'}
-                                  </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  user.planExpiry && new Date(user.planExpiry) > new Date() 
+                                    ? 'bg-green-500' 
+                                    : 'bg-red-500'
+                                }`}></div>
+                                <span>{user.planExpiry && new Date(user.planExpiry) > new Date() ? 'Active' : 'Expired'}</span>
+                              </div>
+                              {user.planExpiry && (
+                                <div className="text-xs text-gray-500">
+                                  Since: {new Date(user.planExpiry).toLocaleDateString()}
                                 </div>
-                              );
-                            })()}
-                          </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Billing Information */}
+                      {user.plan !== 'Free' && (
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-gray-700">Billing Information</h4>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            {user.planExpiry ? (
+                              <>
+                                <div>
+                                  <span className="font-medium">Cycle:</span> {
+                                    (() => {
+                                      const expiryDate = new Date(user.planExpiry);
+                                      const now = new Date();
+                                      const diffTime = expiryDate.getTime() - now.getTime();
+                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                      
+                                      if (diffDays > 365) {
+                                        return 'Yearly';
+                                      } else if (diffDays > 30) {
+                                        return 'Monthly';
+                                      } else {
+                                        return 'Trial';
+                                      }
+                                    })()
+                                  }
+                                </div>
+                                <div>
+                                  <span className="font-medium">Next Payment:</span> {new Date(user.planExpiry).toLocaleDateString()}
+                                </div>
+                                <div>
+                                  <span className="font-medium">Price:</span> {
+                                    (() => {
+                                      const expiryDate = new Date(user.planExpiry);
+                                      const now = new Date();
+                                      const diffTime = expiryDate.getTime() - now.getTime();
+                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                      
+                                      if (diffDays > 365) {
+                                        return user.plan === 'Basic' ? '50 Pi/year' : 
+                                               user.plan === 'Pro' ? '100 Pi/year' : '150 Pi/year';
+                                      } else {
+                                        return user.plan === 'Basic' ? '5 Pi/month' : 
+                                               user.plan === 'Pro' ? '10 Pi/month' : '15 Pi/month';
+                                      }
+                                    })()
+                                  }
+                                </div>
+                                
+                                {/* Enhanced Billing Cycle Progress Bar */}
+                                {(() => {
+                                  const expiryDate = new Date(user.planExpiry);
+                                  const now = new Date();
+                                  const totalDays = expiryDate.getTime() - now.getTime() > 365 * 24 * 60 * 60 * 1000 ? 365 : 30;
+                                  const remainingDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                  const progressPercentage = Math.max(0, Math.min(100, ((totalDays - remainingDays) / totalDays) * 100));
+                                  
+                                  return (
+                                    <div className="mt-3">
+                                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                        <span>Billing Progress</span>
+                                        <span>{Math.round(progressPercentage)}% used</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div 
+                                          className={`h-2 rounded-full transition-all duration-300 ${
+                                            progressPercentage > 80 ? 'bg-red-500' :
+                                            progressPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
+                                          }`}
+                                          style={{ width: `${progressPercentage}%` }}
+                                        ></div>
+                                      </div>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        {remainingDays > 0 ? `${remainingDays} days remaining` : 'Expired'}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              <div>No billing information</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Plan Benefits */}
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-gray-700">Plan Benefits</h4>
+                        <div className="text-sm text-gray-600">
+                          <div className="space-y-1">
+                            <div>• {availableFeatures.length} features unlocked</div>
+                            <div>• {user.plan === 'Free' ? 'Limited access' : 
+                                   user.plan === 'Basic' ? 'Basic support' :
+                                   user.plan === 'Pro' ? 'Priority support' : 'VIP support'}</div>
+                            <div>• {user.plan === 'Free' ? 'No sync' : 
+                                   user.plan === 'Basic' ? 'Basic sync' :
+                                   user.plan === 'Pro' ? 'Advanced sync' : 'Full sync'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Action Buttons */}
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                      <div className="text-sm text-gray-600">
+                        {user.plan === 'Free' ? (
+                          'Upgrade to unlock premium features'
+                        ) : user.planExpiry && new Date(user.planExpiry) <= new Date() ? (
+                          'Your plan has expired. Renew to continue access.'
                         ) : (
-                          <div>No billing information</div>
+                          'Your plan is active and working perfectly'
                         )}
+                      </div>
+                      <div className="flex space-x-3">
+                        {user.plan !== 'Premium' && (
+                          <Button 
+                            onClick={() => handleLockedFeatureClick('upgrade', 
+                              (user.plan === 'Free' ? 'Basic' : 
+                              user.plan === 'Basic' ? 'Pro' : 'Premium') as UserPlan
+                            )}
+                            variant="default"
+                            size="sm"
+                          >
+                            {user.plan === 'Free' ? 'Upgrade Plan' : 
+                             user.planExpiry && new Date(user.planExpiry) <= new Date() ? 'Renew Plan' : 'Upgrade'}
+                          </Button>
+                        )}
+                        {user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) > new Date() && (
+                          <Button 
+                            onClick={() => handleLockedFeatureClick('manage', user.plan as UserPlan)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Manage Plan
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Enhanced Feature Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mb-8">
+                    {allFeatures.map(feature => {
+                      const isAvailable = hasPlanAccess(feature.requiredPlan);
+                      const isLocked = !isAvailable;
+                      
+                      return (
+                        <FeatureCard
+                          key={feature.featureKey}
+                          title={feature.title}
+                          description={feature.description}
+                          icon={feature.icon}
+                          featureKey={feature.featureKey}
+                          requiredPlan={feature.requiredPlan as UserPlan}
+                          userPlan={user.plan as UserPlan}
+                          isLocked={isLocked}
+                          onUpgrade={() => handleLockedFeatureClick(feature.featureKey, feature.requiredPlan as UserPlan)}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Enhanced Plan-specific routes */}
+                  <Routes>
+                    {/* Free Plan Routes */}
+                    <Route path="free-preview" element={hasPlanAccess('Free') ? <TestFeature featureName="Free Habit Preview" description="Preview basic habit tracking. Upgrade to unlock full functionality." icon={<BarChart3 className="h-8 w-8" />} color="bg-gray-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="pi-network" element={hasPlanAccess('Free') ? <TestFeature featureName="Pi Network Integration" description="Access Pi Network features and earn Pi cryptocurrency." icon={<Users className="h-8 w-8" />} color="bg-yellow-100" /> : <Navigate to="/dashboard" replace />} />
+                    
+                    {/* Basic Plan Routes */}
+                    <Route path="habits" element={hasPlanAccess('Basic') ? <HabitTracker /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="tasks" element={hasPlanAccess('Basic') ? <TaskManager /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="challenges" element={hasPlanAccess('Basic') ? <CommunityChallenges /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="sync" element={hasPlanAccess('Basic') ? <CrossPlatformSync /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="mobile" element={hasPlanAccess('Basic') ? <MobileAppAccess /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="notifications" element={hasPlanAccess('Basic') ? <BasicNotifications /> : <Navigate to="/dashboard" replace />} />
+                    
+                    {/* Pro Plan Routes */}
+                    <Route path="mood" element={hasPlanAccess('Pro') ? <MoodTracker /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="goals" element={hasPlanAccess('Pro') ? <TestFeature featureName="Advanced Goals" description="Pro feature - Advanced goal setting with milestones" icon={<Star className="h-8 w-8" />} color="bg-purple-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="journal" element={hasPlanAccess('Pro') ? <TestFeature featureName="Habit Journal" description="Pro feature - Advanced journaling with templates" icon={<BookOpen className="h-8 w-8" />} color="bg-indigo-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="photos" element={hasPlanAccess('Pro') ? <TestFeature featureName="Progress Photos" description="Pro feature - Progress photos and visual tracking" icon={<Camera className="h-8 w-8" />} color="bg-pink-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="custom-challenges" element={hasPlanAccess('Pro') ? <TestFeature featureName="Custom Challenges" description="Pro feature - Create private challenges for friends" icon={<Trophy className="h-8 w-8" />} color="bg-orange-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="streak-protection" element={hasPlanAccess('Pro') ? <TestFeature featureName="Streak Protection" description="Pro feature - Protect your streaks with freeze days" icon={<Flame className="h-8 w-8" />} color="bg-red-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="smart-reminders" element={hasPlanAccess('Pro') ? <TestFeature featureName="Smart Reminders" description="Pro feature - AI-powered adaptive reminders" icon={<Bell className="h-8 w-8" />} color="bg-green-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="support" element={hasPlanAccess('Pro') ? <TestFeature featureName="Priority Support" description="Pro feature - Email support with 24-hour response" icon={<MessageSquare className="h-8 w-8" />} color="bg-blue-100" /> : <Navigate to="/dashboard" replace />} />
+                    
+                    {/* Premium Plan Routes */}
+                    <Route path="ai-coach" element={hasPlanAccess('Premium') ? <AICoach /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="analytics" element={hasPlanAccess('Premium') ? <TestFeature featureName="Advanced Analytics" description="Premium feature - Deep insights and predictive analytics" icon={<PieChart className="h-8 w-8" />} color="bg-indigo-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="calendar" element={hasPlanAccess('Premium') ? <TestFeature featureName="Calendar Integration" description="Premium feature - Full calendar integration" icon={<Calendar className="h-8 w-8" />} color="bg-purple-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="vip-support" element={hasPlanAccess('Premium') ? <TestFeature featureName="VIP Support" description="Premium feature - 24/7 priority support with dedicated manager" icon={<Shield className="h-8 w-8" />} color="bg-yellow-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="exclusive" element={hasPlanAccess('Premium') ? <TestFeature featureName="Exclusive Features" description="Premium feature - Early access to beta features" icon={<Lightbulb className="h-8 w-8" />} color="bg-pink-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="courses" element={hasPlanAccess('Premium') ? <TestFeature featureName="Personalized Courses" description="Premium feature - AI-curated learning paths" icon={<GraduationCap className="h-8 w-8" />} color="bg-green-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="api" element={hasPlanAccess('Premium') ? <TestFeature featureName="API Access" description="Premium feature - Developer API access" icon={<Globe className="h-8 w-8" />} color="bg-blue-100" /> : <Navigate to="/dashboard" replace />} />
+                    <Route path="white-label" element={hasPlanAccess('Premium') ? <TestFeature featureName="White-Label Options" description="Premium feature - Custom branding solutions" icon={<Settings className="h-8 w-8" />} color="bg-gray-100" /> : <Navigate to="/dashboard" replace />} />
+                    
+                    {/* Default route based on user plan */}
+                    <Route path="*" element={
+                      user.plan === 'Free' ? <Navigate to="free-preview" replace /> :
+                      user.plan === 'Basic' ? <Navigate to="habits" replace /> :
+                      user.plan === 'Pro' ? <Navigate to="habits" replace /> :
+                      user.plan === 'Premium' ? <Navigate to="habits" replace /> :
+                      <Navigate to="habits" replace />
+                    } />
+                  </Routes>
+                </>
+              )}
+            </div>
+          ) : (
+            // Settings Tab Content
+            <div className="space-y-6">
+              {/* Profile Section */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Settings</h3>
+                <div className="space-y-4">
+                  {/* Avatar */}
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <img 
+                        src={profileData.avatar || "/logo.png"} 
+                        alt="Profile" 
+                        className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
+                      />
+                      <button className="absolute -bottom-1 -right-1 bg-indigo-600 text-white rounded-full p-1 hover:bg-indigo-700 transition-colors">
+                        <Camera className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Profile Picture</h4>
+                      <p className="text-sm text-gray-500">Click to upload a new image</p>
+                    </div>
+                  </div>
+
+                  {/* Name and Email */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        value={profileData.name}
+                        onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter your full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                      <input
+                        type="email"
+                        value={profileData.email}
+                        onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button className="bg-indigo-600 hover:bg-indigo-700">
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan Management */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Management</h3>
+                <div className="space-y-4">
+                  {/* Current Plan */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">Current Plan: {user.plan}</h4>
+                        <p className="text-sm text-gray-600">
+                          {user.planExpiry ? `Expires: ${new Date(user.planExpiry).toLocaleDateString()}` : 'No expiry date'}
+                        </p>
+                      </div>
+                      <Badge variant={user.plan === 'Premium' ? 'default' : 'outline'}>
+                        {user.plan} Plan
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Plan Actions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {user.plan !== 'Premium' && (
+                      <Button 
+                        onClick={() => handleLockedFeatureClick('upgrade', 
+                          (user.plan === 'Free' ? 'Basic' : 
+                          user.plan === 'Basic' ? 'Pro' : 'Premium') as UserPlan
+                        )}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        Upgrade Plan
+                      </Button>
+                    )}
+                    {user.plan !== 'Free' && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => handleLockedFeatureClick('manage', user.plan as UserPlan)}
+                        className="w-full"
+                      >
+                        Manage Billing
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Cancel Plan Section */}
+                  {user.plan !== 'Free' && (
+                    <div className="border-t border-gray-200 pt-4 mt-4">
+                      <div className="bg-red-50 rounded-lg p-4">
+                        <h4 className="font-medium text-red-900 mb-2">Cancel Plan</h4>
+                        <p className="text-sm text-red-700 mb-3">
+                          Cancelling your plan will immediately downgrade you to the Free plan. 
+                          <strong> No refunds will be issued for any remaining time on your current plan.</strong>
+                        </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline"
+                            onClick={() => setShowCancellationModal(true)}
+                            className="border-red-300 text-red-700 hover:bg-red-50"
+                          >
+                            Cancel Plan
+                          </Button>
+                          <span className="text-xs text-red-600 flex items-center">
+                            <Shield className="h-3 w-3 mr-1" />
+                            No refunds
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Plan Benefits */}
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-gray-700">Plan Benefits</h4>
-                    <div className="text-sm text-gray-600">
-                      <div className="space-y-1">
-                        <div>• {availableFeatures.length} features unlocked</div>
-                        <div>• {user.plan === 'Free' ? 'Limited access' : 
-                               user.plan === 'Basic' ? 'Basic support' :
-                               user.plan === 'Pro' ? 'Priority support' : 'VIP support'}</div>
-                        <div>• {user.plan === 'Free' ? 'No sync' : 
-                               user.plan === 'Basic' ? 'Basic sync' :
-                               user.plan === 'Pro' ? 'Advanced sync' : 'Full sync'}</div>
+                  {/* Billing Information */}
+                  {user.plan !== 'Free' && user.planExpiry && (
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-900 mb-2">Billing Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-blue-700 font-medium">Billing Cycle:</span>
+                          <p className="text-blue-600">
+                            {(() => {
+                              const expiryDate = new Date(user.planExpiry);
+                              const now = new Date();
+                              const diffTime = expiryDate.getTime() - now.getTime();
+                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              
+                              if (diffDays > 365) return 'Yearly';
+                              else if (diffDays > 30) return 'Monthly';
+                              else return 'Trial';
+                            })()}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-blue-700 font-medium">Next Payment:</span>
+                          <p className="text-blue-600">{new Date(user.planExpiry).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <span className="text-blue-700 font-medium">Amount:</span>
+                          <p className="text-blue-600">
+                            {(() => {
+                              const expiryDate = new Date(user.planExpiry);
+                              const now = new Date();
+                              const diffTime = expiryDate.getTime() - now.getTime();
+                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              
+                              if (diffDays > 365) {
+                                return user.plan === 'Basic' ? '50 Pi/year' : 
+                                       user.plan === 'Pro' ? '100 Pi/year' : '150 Pi/year';
+                              } else {
+                                return user.plan === 'Basic' ? '5 Pi/month' : 
+                                       user.plan === 'Pro' ? '10 Pi/month' : '15 Pi/month';
+                              }
+                            })()}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-                  <div className="text-sm text-gray-600">
-                    {user.plan === 'Free' ? (
-                      'Upgrade to unlock premium features'
-                    ) : user.planExpiry && new Date(user.planExpiry) <= new Date() ? (
-                      'Your plan has expired. Renew to continue access.'
-                    ) : (
-                      'Your plan is active and working perfectly'
-                    )}
-                  </div>
-                  <div className="flex space-x-3">
-                    {user.plan !== 'Premium' && (
-                      <button 
-                        onClick={() => handleLockedFeatureClick('upgrade', 
-                          user.plan === 'Free' ? 'Basic' : 
-                          user.plan === 'Basic' ? 'Pro' : 'Premium'
-                        )}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-                      >
-                        {user.plan === 'Free' ? 'Upgrade Plan' : 
-                         user.planExpiry && new Date(user.planExpiry) <= new Date() ? 'Renew Plan' : 'Upgrade'}
-                      </button>
-                    )}
-                    {user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) > new Date() && (
-                      <button 
-                        onClick={() => handleLockedFeatureClick('manage', user.plan)}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors"
-                      >
-                        Manage Plan
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {allFeatures.map(feature => {
-                  const isAvailable = hasPlanAccess(feature.requiredPlan);
-                  const isLocked = !isAvailable;
-                  
-                  return (
-                    <FeatureCard
-                      key={feature.featureKey}
-                      title={feature.title}
-                      description={feature.description}
-                      icon={feature.icon}
-                      featureKey={feature.featureKey}
-                      requiredPlan={feature.requiredPlan}
-                      userPlan={user.plan}
-                      isLocked={isLocked}
-                      onUpgrade={() => handleLockedFeatureClick(feature.featureKey, feature.requiredPlan)}
+
+              {/* Notifications */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Email Notifications</h4>
+                      <p className="text-sm text-gray-600">Receive updates via email</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={profileData.notifications.email}
+                      onChange={(e) => setProfileData({
+                        ...profileData, 
+                        notifications: {...profileData.notifications, email: e.target.checked}
+                      })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                     />
-                  );
-                })}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Push Notifications</h4>
+                      <p className="text-sm text-gray-600">Get notified in real-time</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={profileData.notifications.push}
+                      onChange={(e) => setProfileData({
+                        ...profileData, 
+                        notifications: {...profileData.notifications, push: e.target.checked}
+                      })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">SMS Notifications</h4>
+                      <p className="text-sm text-gray-600">Receive text messages</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={profileData.notifications.sms}
+                      onChange={(e) => setProfileData({
+                        ...profileData, 
+                        notifications: {...profileData.notifications, sms: e.target.checked}
+                      })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Plan-specific routes */}
-              <Routes>
-                {/* Free Plan Routes */}
-                <Route path="free-preview" element={hasPlanAccess('Free') ? <TestFeature featureName="Free Habit Preview" description="Preview basic habit tracking. Upgrade to unlock full functionality." icon={<BarChart3 className="h-8 w-8" />} color="bg-gray-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="pi-network" element={hasPlanAccess('Free') ? <TestFeature featureName="Pi Network Integration" description="Access Pi Network features and earn Pi cryptocurrency." icon={<Users className="h-8 w-8" />} color="bg-yellow-100" /> : <Navigate to="/dashboard" replace />} />
-                
-                {/* Basic Plan Routes */}
-                <Route path="habits" element={hasPlanAccess('Basic') ? <HabitTracker /> : <Navigate to="/dashboard" replace />} />
-                <Route path="tasks" element={hasPlanAccess('Basic') ? <TaskManager /> : <Navigate to="/dashboard" replace />} />
-                <Route path="challenges" element={hasPlanAccess('Basic') ? <CommunityChallenges /> : <Navigate to="/dashboard" replace />} />
-                <Route path="sync" element={hasPlanAccess('Basic') ? <CrossPlatformSync /> : <Navigate to="/dashboard" replace />} />
-                <Route path="mobile" element={hasPlanAccess('Basic') ? <MobileAppAccess /> : <Navigate to="/dashboard" replace />} />
-                <Route path="notifications" element={hasPlanAccess('Basic') ? <BasicNotifications /> : <Navigate to="/dashboard" replace />} />
-                
-                {/* Pro Plan Routes */}
-                <Route path="mood" element={hasPlanAccess('Pro') ? <MoodTracker /> : <Navigate to="/dashboard" replace />} />
-                <Route path="goals" element={hasPlanAccess('Pro') ? <TestFeature featureName="Advanced Goals" description="Pro feature - Advanced goal setting with milestones" icon={<Star className="h-8 w-8" />} color="bg-purple-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="journal" element={hasPlanAccess('Pro') ? <TestFeature featureName="Habit Journal" description="Pro feature - Advanced journaling with templates" icon={<BookOpen className="h-8 w-8" />} color="bg-indigo-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="photos" element={hasPlanAccess('Pro') ? <TestFeature featureName="Progress Photos" description="Pro feature - Progress photos and visual tracking" icon={<Camera className="h-8 w-8" />} color="bg-pink-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="custom-challenges" element={hasPlanAccess('Pro') ? <TestFeature featureName="Custom Challenges" description="Pro feature - Create private challenges for friends" icon={<Trophy className="h-8 w-8" />} color="bg-orange-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="streak-protection" element={hasPlanAccess('Pro') ? <TestFeature featureName="Streak Protection" description="Pro feature - Protect your streaks with freeze days" icon={<Flame className="h-8 w-8" />} color="bg-red-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="smart-reminders" element={hasPlanAccess('Pro') ? <TestFeature featureName="Smart Reminders" description="Pro feature - AI-powered adaptive reminders" icon={<Bell className="h-8 w-8" />} color="bg-green-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="support" element={hasPlanAccess('Pro') ? <TestFeature featureName="Priority Support" description="Pro feature - Email support with 24-hour response" icon={<MessageSquare className="h-8 w-8" />} color="bg-blue-100" /> : <Navigate to="/dashboard" replace />} />
-                
-                {/* Premium Plan Routes */}
-                <Route path="ai-coach" element={hasPlanAccess('Premium') ? <AICoach /> : <Navigate to="/dashboard" replace />} />
-                <Route path="analytics" element={hasPlanAccess('Premium') ? <TestFeature featureName="Advanced Analytics" description="Premium feature - Deep insights and predictive analytics" icon={<PieChart className="h-8 w-8" />} color="bg-indigo-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="calendar" element={hasPlanAccess('Premium') ? <TestFeature featureName="Calendar Integration" description="Premium feature - Full calendar integration" icon={<Calendar className="h-8 w-8" />} color="bg-purple-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="vip-support" element={hasPlanAccess('Premium') ? <TestFeature featureName="VIP Support" description="Premium feature - 24/7 priority support with dedicated manager" icon={<Shield className="h-8 w-8" />} color="bg-yellow-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="exclusive" element={hasPlanAccess('Premium') ? <TestFeature featureName="Exclusive Features" description="Premium feature - Early access to beta features" icon={<Lightbulb className="h-8 w-8" />} color="bg-pink-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="courses" element={hasPlanAccess('Premium') ? <TestFeature featureName="Personalized Courses" description="Premium feature - AI-curated learning paths" icon={<GraduationCap className="h-8 w-8" />} color="bg-green-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="api" element={hasPlanAccess('Premium') ? <TestFeature featureName="API Access" description="Premium feature - Developer API access" icon={<Globe className="h-8 w-8" />} color="bg-blue-100" /> : <Navigate to="/dashboard" replace />} />
-                <Route path="white-label" element={hasPlanAccess('Premium') ? <TestFeature featureName="White-Label Options" description="Premium feature - Custom branding solutions" icon={<Settings className="h-8 w-8" />} color="bg-gray-100" /> : <Navigate to="/dashboard" replace />} />
-                
-                {/* Default route based on user plan */}
-                <Route path="*" element={
-                  user.plan === 'Free' ? <Navigate to="free-preview" replace /> :
-                  user.plan === 'Basic' ? <Navigate to="habits" replace /> :
-                  user.plan === 'Pro' ? <Navigate to="habits" replace /> :
-                  user.plan === 'Premium' ? <Navigate to="habits" replace /> :
-                  <Navigate to="habits" replace />
-                } />
-              </Routes>
-            </>
+              {/* Privacy Settings */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Privacy & Security</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Public Profile</h4>
+                      <p className="text-sm text-gray-600">Allow others to see your profile</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={profileData.privacy.profilePublic}
+                      onChange={(e) => setProfileData({
+                        ...profileData, 
+                        privacy: {...profileData.privacy, profilePublic: e.target.checked}
+                      })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Share Progress</h4>
+                      <p className="text-sm text-gray-600">Share your achievements with friends</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={profileData.privacy.shareProgress}
+                      onChange={(e) => setProfileData({
+                        ...profileData, 
+                        privacy: {...profileData.privacy, shareProgress: e.target.checked}
+                      })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-gray-900">Analytics</h4>
+                      <p className="text-sm text-gray-600">Help improve Salenus A.I with usage data</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={profileData.privacy.allowAnalytics}
+                      onChange={(e) => setProfileData({
+                        ...profileData, 
+                        privacy: {...profileData.privacy, allowAnalytics: e.target.checked}
+                      })}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Management */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Management</h3>
+                <div className="space-y-3">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export My Data
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Data
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </div>
+              </div>
+
+              {/* Account Actions */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Actions</h3>
+                <div className="space-y-3">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Key className="h-4 w-4 mr-2" />
+                    Change Password
+                  </Button>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Shield className="h-4 w-4 mr-2" />
+                    Two-Factor Authentication
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start text-red-600 hover:text-red-700"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </main>
-      {/* Only show PaymentModal for expiry/renewal, not for upgrades (handled by parent) */}
+      
+      {/* Enhanced Payment Modal */}
       {!onUpgrade && (
         <PaymentModal
           isOpen={paymentOpen}
-          plan={selectedPlan}
+          plan={selectedPlan as UserPlan}
           onPay={handlePay}
           onChangePlan={handleChangePlan}
           isLoading={featureLoading}
         />
+      )}
+      
+      {/* Enhanced Mobile Floating Action Button */}
+      {isMobile && (
+        <div className="fixed bottom-20 right-4 z-30">
+          <Button
+            size="lg"
+            className="rounded-full shadow-lg w-16 h-16"
+            onClick={() => setCurrentFeature('quick-add')}
+            aria-label="Quick Add"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
+      
+      {/* Enhanced Mobile Bottom Navigation */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 flex justify-around py-2 shadow-lg">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex flex-col items-center text-xs text-slate-700" 
+            onClick={() => handleFeatureNavigation('habits', 'habits')}
+          >
+            <BarChart3 className="h-5 w-5 mb-1" />
+            Habits
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex flex-col items-center text-xs text-slate-700" 
+            onClick={() => handleFeatureNavigation('tasks', 'tasks')}
+          >
+            <ClipboardList className="h-5 w-5 mb-1" />
+            Tasks
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex flex-col items-center text-xs text-slate-700" 
+            onClick={() => handleFeatureNavigation('challenges', 'challenges')}
+          >
+            <Users className="h-5 w-5 mb-1" />
+            Challenges
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex flex-col items-center text-xs text-slate-700" 
+            onClick={() => handleFeatureNavigation('sync', 'sync')}
+          >
+            <Cloud className="h-5 w-5 mb-1" />
+            Sync
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex flex-col items-center text-xs text-slate-700" 
+            onClick={() => handleFeatureNavigation('mobile', 'mobile')}
+          >
+            <MobileIcon className="h-5 w-5 mb-1" />
+            App
+          </Button>
+        </nav>
+      )}
+      
+      {/* Keyboard Shortcuts Modal */}
+      {showKeyboardShortcuts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Keyboard Shortcuts</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowKeyboardShortcuts(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Ctrl+K</span>
+                <span>Search</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ctrl+B</span>
+                <span>Toggle Sidebar</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ctrl+H</span>
+                <span>Habits</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ctrl+T</span>
+                <span>Tasks</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ctrl+M</span>
+                <span>Mood</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Ctrl+?</span>
+                <span>Show Shortcuts</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancellation Modal */}
+      {showCancellationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-red-900">Cancel Plan</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowCancellationModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-red-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-5 w-5 text-red-600" />
+                  <span className="font-medium text-red-900">No Refund Policy</span>
+                </div>
+                <p className="text-sm text-red-700">
+                  By cancelling your plan, you acknowledge that no refunds will be issued for any remaining time on your current billing cycle.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for cancellation (optional)
+                </label>
+                <textarea
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Tell us why you're cancelling..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <Button 
+                  onClick={handleCancelPlan}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  Cancel Plan
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowCancellationModal(false)}
+                  className="flex-1"
+                >
+                  Keep Plan
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

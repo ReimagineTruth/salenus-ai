@@ -4,6 +4,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Lock, UserPlus, LogIn } from 'lucide-react';
+import { CookieConsent } from '@/components/CookieConsent';
+import { useCookieConsent } from '@/hooks/useCookieConsent';
 
 interface LoginPageProps {
   onLogin?: (userData: any) => void;
@@ -11,26 +13,72 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup }) => {
-  const { login, isLoading } = useAuth();
+  const { login, register, isLoading } = useAuth();
+  const { hasConsented, acceptCookies, declineCookies } = useCookieConsent();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isSignupMode, setIsSignupMode] = useState(false);
+  const [showCookieConsent, setShowCookieConsent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return setError('Please enter email and password.');
+    
+    if (isSignupMode) {
+      if (!email || !password || !name) {
+        return setError('Please enter email, password, and name.');
+      }
+    } else {
+      if (!email || !password) {
+        return setError('Please enter email and password.');
+      }
+    }
     
     try {
-      const userData = await login(email, password, 'Free'); // Always start with Free plan
+      let userData;
       
-      if (isSignupMode && onSignup) {
-        onSignup(userData);
-      } else if (!isSignupMode && onLogin) {
-        onLogin(userData);
+      if (isSignupMode) {
+        // Show cookie consent for new signups
+        console.log('Signup mode, hasConsented:', hasConsented);
+        if (hasConsented === null) {
+          console.log('Showing cookie consent for signup');
+          setShowCookieConsent(true);
+          return;
+        }
+        
+        userData = await register(email, password, name, 'Free');
+        if (onSignup) {
+          onSignup(userData);
+        }
+      } else {
+        userData = await login(email, password, 'Free');
+        if (onLogin) {
+          onLogin(userData);
+        }
       }
-    } catch (err) {
-      setError('Authentication failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    }
+  };
+
+  const handleCookieAccept = (preferences: any) => {
+    acceptCookies(preferences);
+    setShowCookieConsent(false);
+    
+    // Retry the signup after cookie consent
+    if (isSignupMode) {
+      handleSubmit(new Event('submit') as any);
+    }
+  };
+
+  const handleCookieDecline = () => {
+    declineCookies();
+    setShowCookieConsent(false);
+    
+    // Retry the signup after cookie consent
+    if (isSignupMode) {
+      handleSubmit(new Event('submit') as any);
     }
   };
 
@@ -71,6 +119,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignupMode && (
+              <div>
+                <label className="block mb-1 font-medium">Full Name</label>
+                <Input 
+                  type="text" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  required 
+                  placeholder="Enter your full name" 
+                />
+              </div>
+            )}
             <div>
               <label className="block mb-1 font-medium">Email</label>
               <Input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="Enter your email" />
@@ -79,23 +139,30 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup }) => {
               <label className="block mb-1 font-medium">Password</label>
               <Input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Enter your password" />
             </div>
-            <div className="bg-blue-50 p-3 rounded text-xs text-blue-700 flex items-center gap-2">
+            <div className="bg-green-50 p-3 rounded text-xs text-green-700 flex items-center gap-2">
               <Lock className="h-4 w-4" />
-              Mock authentication: any email/password works
+              Real authentication: Create an account or sign in with existing credentials
             </div>
             {error && <div className="text-red-600 text-sm">{error}</div>}
             <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700" disabled={isLoading}>
-              {isLoading ? (isSignupMode ? 'Creating Account...' : 'Signing In...') : (isSignupMode ? 'Create Free Account' : 'Sign In')}
+              {isLoading ? (isSignupMode ? 'Creating Account...' : 'Signing In...') : (isSignupMode ? 'Create Account' : 'Sign In')}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-600">
-              {isSignupMode ? 'Start with a free account and upgrade later' : 'Welcome back to your free account'}
+              {isSignupMode ? 'Create your account to get started' : 'Welcome back to your account'}
             </p>
           </div>
         </CardContent>
       </Card>
+
+      {/* Cookie Consent Banner */}
+      <CookieConsent
+        isOpen={showCookieConsent}
+        onAccept={handleCookieAccept}
+        onDecline={handleCookieDecline}
+      />
     </div>
   );
 };

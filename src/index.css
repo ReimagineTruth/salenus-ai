@@ -134,6 +134,68 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Ensure sticky positioning works properly */
+.sticky {
+  position: -webkit-sticky;
+  position: sticky;
+}
+
+/* Enhanced sticky header behavior */
+header.sticky {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Mobile menu animations */
+@keyframes slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-top 0.3s ease-out forwards;
+}
+
+.slide-in-from-top-2 {
+  animation: slide-in-from-top 0.2s ease-out forwards;
+}
+
+/* Side drawer animations */
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.slide-in-from-right {
+  animation: slide-in-from-right 0.3s ease-out forwards;
+}
+
+/* Backdrop animation */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
 /* Custom gradient backgrounds */
 .bg-gradient-hero {
   background: linear-gradient(135deg, #5A67D8 0%, #667EEA 50%, #38B2AC 100%);
@@ -197,6 +259,76 @@ html {
   50% {
     transform: translateY(-10px);
   }
+}
+
+/* Professional floating animations for splash screen */
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-15px) rotate(5deg);
+  }
+}
+
+@keyframes float-delayed-2 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(-3deg);
+  }
+}
+
+@keyframes float-delayed-3 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(2deg);
+  }
+}
+
+@keyframes float-delayed-4 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(-4deg);
+  }
+}
+
+@keyframes float-delayed-5 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-16px) rotate(3deg);
+  }
+}
+
+.animate-float-delayed {
+  animation: float-delayed 3s ease-in-out infinite;
+}
+
+.animate-float-delayed-2 {
+  animation: float-delayed-2 3.5s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+.animate-float-delayed-3 {
+  animation: float-delayed-3 4s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+.animate-float-delayed-4 {
+  animation: float-delayed-4 3.2s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+.animate-float-delayed-5 {
+  animation: float-delayed-5 3.8s ease-in-out infinite;
+  animation-delay: 2s;
 }
 
 @keyframes glow {

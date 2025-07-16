@@ -1,69 +1,163 @@
 import { useState, useEffect } from 'react';
 
-export type UserPlan = 'Basic' | 'Pro' | 'Premium' | null;
+export type UserPlan = 'Free' | 'Basic' | 'Pro' | 'Premium';
 
 export interface User {
   id: string;
   email: string;
   name: string;
   plan: UserPlan;
-  planExpiry: Date;
+  planExpiry: Date | null;
   isActive: boolean;
+  createdAt: string;
 }
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock login function
+  // Local storage login function
   const login = async (email: string, password: string, plan: UserPlan) => {
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: 'user_' + Math.random().toString(36).substr(2, 9),
-      email,
-      name: email.split('@')[0],
-      plan,
-      planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      isActive: true
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    setIsLoading(false);
-    
-    return mockUser;
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Check if user exists in localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const existingUser = users.find((u: User) => u.email === email);
+      
+      if (!existingUser) {
+        throw new Error('User not found. Please sign up first.');
+      }
+      
+      // Simple password check (in real app, use proper hashing)
+      if (existingUser.password !== password) {
+        throw new Error('Invalid password.');
+      }
+      
+      // Remove password from user object and ensure proper structure
+      const { password: _, ...userData } = existingUser;
+      const validatedUser = {
+        ...userData,
+        plan: userData.plan || 'Free',
+        hasPaid: userData.hasPaid || false,
+        planExpiry: userData.planExpiry || null,
+        isActive: userData.isActive !== false
+      };
+      
+      setUser(validatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(validatedUser));
+      setIsLoading(false);
+      
+      return validatedUser;
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   };
 
-  // Mock logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  // Local storage register function
+  const register = async (email: string, password: string, name: string, plan: UserPlan = 'Free') => {
+    setIsLoading(true);
+    
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Check if user already exists
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const existingUser = users.find((u: User) => u.email === email);
+      
+      if (existingUser) {
+        throw new Error('User already exists. Please sign in instead.');
+      }
+      
+      // Create new user with proper structure
+      const newUser: User = {
+        id: Date.now().toString(),
+        email,
+        name,
+        plan,
+        planExpiry: null,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Add hasPaid field for new users
+      const userWithPaymentStatus = {
+        ...newUser,
+        hasPaid: false
+      };
+      
+      // Save user to localStorage
+      users.push({ ...userWithPaymentStatus, password });
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      // Set as current user
+      setUser(userWithPaymentStatus);
+      localStorage.setItem('currentUser', JSON.stringify(userWithPaymentStatus));
+      setIsLoading(false);
+      
+      return userWithPaymentStatus;
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   };
 
-  // Mock upgrade plan function
+  // Local storage logout function
+  const logout = async () => {
+    try {
+      setUser(null);
+      localStorage.removeItem('currentUser');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
+  // Local storage upgrade plan function
   const upgradePlan = async (newPlan: UserPlan) => {
     if (!user) return;
     
     setIsLoading(true);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const updatedUser: User = {
-      ...user,
-      plan: newPlan,
-      planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    };
-    
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    setIsLoading(false);
-    
-    return updatedUser;
+    try {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update user plan with payment status
+      const updatedUser = {
+        ...user,
+        plan: newPlan,
+        hasPaid: true,
+        planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      };
+      
+      // Update in localStorage
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const userIndex = users.findIndex((u: User) => u.id === user.id);
+      
+      if (userIndex !== -1) {
+        users[userIndex] = { 
+          ...users[userIndex], 
+          plan: newPlan, 
+          hasPaid: true,
+          planExpiry: updatedUser.planExpiry 
+        };
+        localStorage.setItem('users', JSON.stringify(users));
+      }
+      
+      setUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      setIsLoading(false);
+      
+      return updatedUser;
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   };
 
   // Check if user has access to a feature
@@ -109,6 +203,11 @@ export const useAuth = () => {
   // Get plan features
   const getPlanFeatures = (plan: UserPlan) => {
     const features = {
+      Free: [
+        'habit_tracking',
+        'task_management',
+        'basic_notifications'
+      ],
       Basic: [
         'habit_tracking',
         'task_management', 
@@ -162,31 +261,83 @@ export const useAuth = () => {
     return features[plan] || [];
   };
 
+  // Check plan status and handle expired plans
+  const checkPlanStatus = () => {
+    if (!user) return { isValid: false, isExpired: false, isExpiringSoon: false };
+    
+    const isExpired = user.planExpiry && new Date(user.planExpiry) < new Date();
+    const isExpiringSoon = user.planExpiry && !isExpired && 
+      new Date(user.planExpiry).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000;
+    
+    return {
+      isValid: !isExpired,
+      isExpired,
+      isExpiringSoon,
+      daysUntilExpiry: user.planExpiry ? Math.ceil((new Date(user.planExpiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
+    };
+  };
+
+  // Get recommended plan based on user behavior
+  const getRecommendedPlan = () => {
+    if (!user) return 'Free';
+    
+    // Simple recommendation logic based on current plan
+    const planHierarchy = { 'Free': 0, 'Basic': 1, 'Pro': 2, 'Premium': 3 };
+    const currentPlanLevel = planHierarchy[user.plan] || 0;
+    
+    if (currentPlanLevel < 3) {
+      const nextPlan = Object.keys(planHierarchy).find(key => planHierarchy[key as UserPlan] === currentPlanLevel + 1);
+      return nextPlan as UserPlan || 'Free';
+    }
+    
+    return user.plan;
+  };
+
   // Initialize user from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        // Patch planExpiry to be a Date object if it's a string
-        if (userData.planExpiry && typeof userData.planExpiry === 'string') {
-          userData.planExpiry = new Date(userData.planExpiry);
+    const initializeAuth = () => {
+      const savedUser = localStorage.getItem('currentUser');
+      
+      if (savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          if (userData.planExpiry && typeof userData.planExpiry === 'string') {
+            userData.planExpiry = new Date(userData.planExpiry);
+          }
+          
+          // Ensure user has required fields
+          const validatedUser = {
+            ...userData,
+            plan: userData.plan || 'Free',
+            hasPaid: userData.hasPaid || false,
+            planExpiry: userData.planExpiry || null,
+            isActive: userData.isActive !== false
+          };
+          
+          setUser(validatedUser);
+          
+          // Update localStorage with validated data
+          localStorage.setItem('currentUser', JSON.stringify(validatedUser));
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          localStorage.removeItem('currentUser');
         }
-        setUser(userData);
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('user');
       }
-    }
+    };
+
+    initializeAuth();
   }, []);
 
   return {
     user,
     isLoading,
     login,
+    register,
     logout,
     upgradePlan,
     hasFeature,
-    getPlanFeatures
+    getPlanFeatures,
+    checkPlanStatus,
+    getRecommendedPlan
   };
 }; 

@@ -14,7 +14,15 @@ import {
   Flag,
   List,
   Lock,
-  ArrowUp
+  ArrowUp,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  CalendarDays,
+  Filter,
+  SortAsc,
+  SortDesc,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -27,6 +35,8 @@ interface Task {
   dueDate: string;
   category: string;
   createdAt: Date;
+  completedAt?: Date;
+  tags: string[];
 }
 
 export const TaskManager: React.FC = () => {
@@ -37,13 +47,16 @@ export const TaskManager: React.FC = () => {
     description: '', 
     priority: 'Medium' as const, 
     dueDate: '', 
-    category: 'Work' 
+    category: 'Work',
+    tags: ''
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [filter, setFilter] = useState('All');
   const [sortBy, setSortBy] = useState('dueDate');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
-  const categories = ['All', 'Work', 'Personal', 'Health', 'Learning', 'Finance'];
+  const categories = ['All', 'Work', 'Personal', 'Health', 'Learning', 'Finance', 'Home'];
   const priorities = ['Low', 'Medium', 'High'];
 
   // Load tasks from localStorage
@@ -72,18 +85,26 @@ export const TaskManager: React.FC = () => {
       priority: newTask.priority,
       dueDate: newTask.dueDate,
       category: newTask.category,
-      createdAt: new Date()
+      createdAt: new Date(),
+      tags: newTask.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
     };
 
     setTasks([...tasks, task]);
-    setNewTask({ title: '', description: '', priority: 'Medium', dueDate: '', category: 'Work' });
+    setNewTask({ title: '', description: '', priority: 'Medium', dueDate: '', category: 'Work', tags: '' });
     setShowAddForm(false);
   };
 
   const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        return {
+          ...task,
+          completed: !task.completed,
+          completedAt: !task.completed ? new Date() : undefined
+        };
+      }
+      return task;
+    }));
   };
 
   const deleteTask = (taskId: string) => {
@@ -93,30 +114,61 @@ export const TaskManager: React.FC = () => {
   const filteredTasks = tasks
     .filter(task => filter === 'All' || task.category === filter)
     .sort((a, b) => {
+      let comparison = 0;
+      
       if (sortBy === 'dueDate') {
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      }
-      if (sortBy === 'priority') {
+        comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      } else if (sortBy === 'priority') {
         const priorityOrder = { High: 3, Medium: 2, Low: 1 };
-        return priorityOrder[b.priority] - priorityOrder[a.priority];
+        comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+      } else if (sortBy === 'createdAt') {
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      } else if (sortBy === 'title') {
+        comparison = a.title.localeCompare(b.title);
       }
-      return 0;
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
     });
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.completed).length;
   const overdueTasks = tasks.filter(t => !t.completed && new Date(t.dueDate) < new Date()).length;
   const highPriorityTasks = tasks.filter(t => !t.completed && t.priority === 'High').length;
+  const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const maxTasks = user?.plan === 'Basic' ? 20 : user?.plan === 'Pro' ? 100 : 500;
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'High': return 'bg-red-100 text-red-800';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800';
-      case 'Low': return 'bg-green-100 text-green-800';
+      case 'High': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'Work': return 'bg-blue-100 text-blue-800';
+      case 'Personal': return 'bg-purple-100 text-purple-800';
+      case 'Health': return 'bg-green-100 text-green-800';
+      case 'Learning': return 'bg-indigo-100 text-indigo-800';
+      case 'Finance': return 'bg-emerald-100 text-emerald-800';
+      case 'Home': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const isOverdue = (dueDate: string) => {
+    return new Date(dueDate) < new Date();
+  };
+
+  const getDaysUntilDue = (dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
   if (!user) {
@@ -138,39 +190,82 @@ export const TaskManager: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-800">Task Manager</h2>
           <p className="text-slate-600">Organize and track your tasks efficiently</p>
         </div>
-        <Badge className={user.plan === 'Premium' ? 'bg-purple-600' : user.plan === 'Pro' ? 'bg-indigo-600' : 'bg-blue-600'}>
-          {user.plan} Plan
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={user.plan === 'Premium' ? 'bg-purple-600' : user.plan === 'Pro' ? 'bg-indigo-600' : 'bg-blue-600'}>
+            {user.plan} Plan
+          </Badge>
+          <div className="flex gap-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <BarChart3 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Enhanced Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-slate-800">{totalTasks}</div>
-            <p className="text-sm text-slate-600">Total Tasks</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{totalTasks}</div>
+                <p className="text-sm text-slate-600">Total Tasks</p>
+              </div>
+              <List className="h-8 w-8 text-blue-600" />
+            </div>
             <div className="mt-2 text-xs text-slate-500">{totalTasks}/{maxTasks} limit</div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
-            <p className="text-sm text-slate-600">Completed</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
+                <p className="text-sm text-slate-600">Completed</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <div className="mt-2">
+              <div className="text-xs text-slate-500">{completionRate}% completion rate</div>
+            </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-600">{overdueTasks}</div>
-            <p className="text-sm text-slate-600">Overdue</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">{overdueTasks}</div>
+                <p className="text-sm text-slate-600">Overdue</p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Tasks past due date</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">{highPriorityTasks}</div>
-            <p className="text-sm text-slate-600">High Priority</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-orange-600">{highPriorityTasks}</div>
+                <p className="text-sm text-slate-600">High Priority</p>
+              </div>
+              <Flag className="h-8 w-8 text-orange-600" />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Urgent tasks</p>
           </CardContent>
         </Card>
       </div>
@@ -257,8 +352,18 @@ export const TaskManager: React.FC = () => {
                 id="task-description"
                 value={newTask.description}
                 onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                placeholder="Add details about this task..."
+                placeholder="Add details about your task..."
                 rows={3}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="task-tags">Tags (Optional)</Label>
+              <Input
+                id="task-tags"
+                value={newTask.tags}
+                onChange={(e) => setNewTask({...newTask, tags: e.target.value})}
+                placeholder="e.g., urgent, project, meeting (comma separated)"
               />
             </div>
             
@@ -275,8 +380,8 @@ export const TaskManager: React.FC = () => {
       </Card>
 
       {/* Filters and Sort */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap gap-2">
           {categories.map(category => (
             <Button
               key={category}
@@ -290,85 +395,197 @@ export const TaskManager: React.FC = () => {
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-600">Sort by:</span>
+          <Label htmlFor="sort-by" className="text-sm">Sort by:</Label>
           <select
-            className="px-3 py-1 border border-slate-300 rounded-md text-sm"
+            id="sort-by"
+            className="px-2 py-1 border border-slate-300 rounded text-sm"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
             <option value="dueDate">Due Date</option>
             <option value="priority">Priority</option>
+            <option value="createdAt">Created Date</option>
+            <option value="title">Title</option>
           </select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+          >
+            {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
       {/* Tasks List */}
-      <div className="space-y-3">
-        {filteredTasks.map(task => (
-          <Card key={task.id} className={`transition-all duration-200 hover:shadow-lg ${
-            task.completed ? 'border-green-200 bg-green-50' : 'border-slate-200'
-          } ${!task.completed && new Date(task.dueDate) < new Date() ? 'border-red-200 bg-red-50' : ''}`}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3 flex-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleTask(task.id)}
-                    className={`mt-1 ${task.completed ? 'text-green-600' : 'text-slate-400'}`}
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className={`font-medium ${task.completed ? 'line-through text-slate-500' : 'text-slate-800'}`}>
+      {viewMode === 'list' ? (
+        <div className="space-y-3">
+          {filteredTasks.map(task => (
+            <Card key={task.id} className={`${task.completed ? 'border-green-200 bg-green-50' : ''} ${isOverdue(task.dueDate) && !task.completed ? 'border-red-200 bg-red-50' : ''}`}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Button
+                      onClick={() => toggleTask(task.id)}
+                      variant={task.completed ? "outline" : "default"}
+                      size="sm"
+                      className={task.completed ? 'border-green-500 text-green-700' : ''}
+                    >
+                      {task.completed ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                    <div className="flex-1">
+                      <h3 className={`font-semibold ${task.completed ? 'line-through text-slate-500' : ''}`}>
                         {task.title}
                       </h3>
-                      <Badge className={getPriorityColor(task.priority)}>
-                        {task.priority}
-                      </Badge>
-                      {!task.completed && new Date(task.dueDate) < new Date() && (
-                        <Badge className="bg-red-100 text-red-800">Overdue</Badge>
+                      {task.description && (
+                        <p className={`text-sm text-slate-600 ${task.completed ? 'line-through' : ''}`}>
+                          {task.description}
+                        </p>
                       )}
-                    </div>
-                    
-                    {task.description && (
-                      <p className={`text-sm mb-2 ${task.completed ? 'text-slate-400' : 'text-slate-600'}`}>
-                        {task.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <List className="h-3 w-3" />
-                        {task.category}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Created: {task.createdAt.toLocaleDateString()}
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge className={getPriorityColor(task.priority)}>
+                          <Flag className="h-3 w-3 mr-1" />
+                          {task.priority}
+                        </Badge>
+                        <Badge className={getCategoryColor(task.category)}>
+                          {task.category}
+                        </Badge>
+                        {task.tags.length > 0 && task.tags.map(tag => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
                   </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-4 w-4 text-slate-500" />
+                        <span className={`text-sm font-medium ${isOverdue(task.dueDate) && !task.completed ? 'text-red-600' : ''}`}>
+                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                        </span>
+                      </div>
+                      {task.dueDate && (
+                        <span className={`text-xs ${isOverdue(task.dueDate) && !task.completed ? 'text-red-600' : 'text-slate-500'}`}>
+                          {isOverdue(task.dueDate) 
+                            ? `${Math.abs(getDaysUntilDue(task.dueDate))} days overdue`
+                            : getDaysUntilDue(task.dueDate) === 0 
+                              ? 'Due today'
+                              : `${getDaysUntilDue(task.dueDate)} days left`
+                          }
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteTask(task.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteTask(task.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredTasks.map(task => (
+            <Card key={task.id} className={`${task.completed ? 'border-green-200 bg-green-50' : ''} ${isOverdue(task.dueDate) && !task.completed ? 'border-red-200 bg-red-50' : ''}`}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className={`text-lg ${task.completed ? 'line-through text-slate-500' : ''}`}>
+                      {task.title}
+                    </CardTitle>
+                    {task.description && (
+                      <CardDescription className={`mt-1 ${task.completed ? 'line-through' : ''}`}>
+                        {task.description}
+                      </CardDescription>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteTask(task.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge className={getPriorityColor(task.priority)}>
+                    <Flag className="h-3 w-3 mr-1" />
+                    {task.priority}
+                  </Badge>
+                  <Badge className={getCategoryColor(task.category)}>
+                    {task.category}
+                  </Badge>
+                  {task.completed && (
+                    <Badge className="bg-green-100 text-green-800">
+                      <Check className="h-3 w-3 mr-1" />
+                      Completed
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  {task.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {task.tags.map(tag => (
+                        <Badge key={tag} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Due Date</span>
+                    <div className="text-right">
+                      <span className={`text-sm font-medium ${isOverdue(task.dueDate) && !task.completed ? 'text-red-600' : ''}`}>
+                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                      </span>
+                      {task.dueDate && (
+                        <div className={`text-xs ${isOverdue(task.dueDate) && !task.completed ? 'text-red-600' : 'text-slate-500'}`}>
+                          {isOverdue(task.dueDate) 
+                            ? `${Math.abs(getDaysUntilDue(task.dueDate))} days overdue`
+                            : getDaysUntilDue(task.dueDate) === 0 
+                              ? 'Due today'
+                              : `${getDaysUntilDue(task.dueDate)} days left`
+                          }
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={() => toggleTask(task.id)}
+                    variant={task.completed ? "outline" : "default"}
+                    className={`w-full ${task.completed ? 'border-green-500 text-green-700' : ''}`}
+                  >
+                    {task.completed ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Completed
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Mark Complete
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Upgrade Prompt */}
       {totalTasks >= maxTasks && (

@@ -29,6 +29,9 @@ Salenus AI
 * **Progress Tracking**
   Monitor your growth, habits, and milestones with intuitive dashboards.
 
+* **Home Dashboard**
+  Access your personalized home screen with persistent data, plan detection, and quick actions.
+
 * **Pi Network Integration**
   Unlock rewards and exclusive coaching features powered by the Pi Network.
 

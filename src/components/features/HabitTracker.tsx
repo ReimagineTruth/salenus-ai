@@ -14,7 +14,13 @@ import {
   BarChart3, 
   Target,
   Lock,
-  ArrowUp
+  ArrowUp,
+  TrendingUp,
+  Clock,
+  Award,
+  Zap,
+  List,
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -28,6 +34,9 @@ interface Habit {
   goal: number;
   category: string;
   createdAt: Date;
+  lastCompleted?: Date;
+  bestStreak: number;
+  weeklyProgress: number[];
 }
 
 export const HabitTracker: React.FC = () => {
@@ -36,6 +45,7 @@ export const HabitTracker: React.FC = () => {
   const [newHabit, setNewHabit] = useState({ name: '', description: '', goal: 1, category: 'Health' });
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
 
   const categories = ['All', 'Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness'];
 
@@ -54,6 +64,27 @@ export const HabitTracker: React.FC = () => {
     }
   }, [habits, user?.id]);
 
+  // Reset daily completion status at midnight
+  useEffect(() => {
+    const checkAndResetDaily = () => {
+      const now = new Date();
+      const lastReset = localStorage.getItem(`lastReset_${user?.id}`);
+      const lastResetDate = lastReset ? new Date(lastReset) : null;
+      
+      if (!lastResetDate || lastResetDate.getDate() !== now.getDate()) {
+        setHabits(prev => prev.map(habit => ({
+          ...habit,
+          completedToday: false
+        })));
+        localStorage.setItem(`lastReset_${user?.id}`, now.toISOString());
+      }
+    };
+
+    checkAndResetDaily();
+    const interval = setInterval(checkAndResetDaily, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
   const addHabit = () => {
     if (!newHabit.name.trim()) return;
     
@@ -66,7 +97,9 @@ export const HabitTracker: React.FC = () => {
       completedToday: false,
       goal: newHabit.goal,
       category: newHabit.category,
-      createdAt: new Date()
+      createdAt: new Date(),
+      bestStreak: 0,
+      weeklyProgress: [0, 0, 0, 0, 0, 0, 0]
     };
 
     setHabits([...habits, habit]);
@@ -78,11 +111,16 @@ export const HabitTracker: React.FC = () => {
     setHabits(habits.map(habit => {
       if (habit.id === habitId) {
         const completedToday = !habit.completedToday;
+        const newStreak = completedToday ? habit.streak + 1 : Math.max(0, habit.streak - 1);
+        const newBestStreak = Math.max(habit.bestStreak, newStreak);
+        
         return {
           ...habit,
           completedToday,
-          streak: completedToday ? habit.streak + 1 : Math.max(0, habit.streak - 1),
-          totalDays: completedToday ? habit.totalDays + 1 : habit.totalDays
+          streak: newStreak,
+          bestStreak: newBestStreak,
+          totalDays: completedToday ? habit.totalDays + 1 : habit.totalDays,
+          lastCompleted: completedToday ? new Date() : habit.lastCompleted
         };
       }
       return habit;
@@ -101,8 +139,31 @@ export const HabitTracker: React.FC = () => {
   const completedToday = habits.filter(h => h.completedToday).length;
   const totalStreak = habits.reduce((sum, h) => sum + h.streak, 0);
   const averageStreak = totalHabits > 0 ? Math.round(totalStreak / totalHabits) : 0;
+  const totalCompletionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
 
   const maxHabits = user?.plan === 'Basic' ? 5 : user?.plan === 'Pro' ? 15 : 50;
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'Health': return <Target className="h-4 w-4" />;
+      case 'Productivity': return <TrendingUp className="h-4 w-4" />;
+      case 'Learning': return <BookOpen className="h-4 w-4" />;
+      case 'Fitness': return <Zap className="h-4 w-4" />;
+      case 'Mindfulness': return <Award className="h-4 w-4" />;
+      default: return <BarChart3 className="h-4 w-4" />;
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'Health': return 'bg-green-100 text-green-800';
+      case 'Productivity': return 'bg-blue-100 text-blue-800';
+      case 'Learning': return 'bg-purple-100 text-purple-800';
+      case 'Fitness': return 'bg-orange-100 text-orange-800';
+      case 'Mindfulness': return 'bg-indigo-100 text-indigo-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   if (!user) {
     return (
@@ -123,17 +184,40 @@ export const HabitTracker: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-800">Habit Tracker</h2>
           <p className="text-slate-600">Build lasting habits and track your progress</p>
         </div>
-        <Badge className={user.plan === 'Premium' ? 'bg-purple-600' : user.plan === 'Pro' ? 'bg-indigo-600' : 'bg-blue-600'}>
-          {user.plan} Plan
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={user.plan === 'Premium' ? 'bg-purple-600' : user.plan === 'Pro' ? 'bg-indigo-600' : 'bg-blue-600'}>
+            {user.plan} Plan
+          </Badge>
+          <div className="flex gap-1">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <BarChart3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Enhanced Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-slate-800">{totalHabits}</div>
-            <p className="text-sm text-slate-600">Total Habits</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{totalHabits}</div>
+                <p className="text-sm text-slate-600">Total Habits</p>
+              </div>
+              <BarChart3 className="h-8 w-8 text-blue-600" />
+            </div>
             <Progress value={(totalHabits / maxHabits) * 100} className="mt-2" />
             <p className="text-xs text-slate-500 mt-1">{totalHabits}/{maxHabits} limit</p>
           </CardContent>
@@ -141,22 +225,43 @@ export const HabitTracker: React.FC = () => {
         
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">{completedToday}</div>
-            <p className="text-sm text-slate-600">Completed Today</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">{completedToday}</div>
+                <p className="text-sm text-slate-600">Completed Today</p>
+              </div>
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <div className="mt-2">
+              <Progress value={totalCompletionRate} className="mb-1" />
+              <p className="text-xs text-slate-500">{totalCompletionRate}% completion rate</p>
+            </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">{totalStreak}</div>
-            <p className="text-sm text-slate-600">Total Streak Days</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-orange-600">{totalStreak}</div>
+                <p className="text-sm text-slate-600">Total Streak Days</p>
+              </div>
+              <Flame className="h-8 w-8 text-orange-600" />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Combined streak across all habits</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-blue-600">{averageStreak}</div>
-            <p className="text-sm text-slate-600">Avg. Streak</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{averageStreak}</div>
+                <p className="text-sm text-slate-600">Avg. Streak</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-blue-600" />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Average streak per habit</p>
           </CardContent>
         </Card>
       </div>
@@ -247,72 +352,130 @@ export const HabitTracker: React.FC = () => {
       </div>
 
       {/* Habits List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredHabits.map(habit => (
-          <Card key={habit.id} className={`transition-all duration-200 hover:shadow-lg ${
-            habit.completedToday ? 'border-green-200 bg-green-50' : 'border-slate-200'
-          }`}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{habit.name}</CardTitle>
-                  <CardDescription>{habit.description}</CardDescription>
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredHabits.map(habit => (
+            <Card key={habit.id} className={`relative ${habit.completedToday ? 'border-green-200 bg-green-50' : ''}`}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{habit.name}</CardTitle>
+                    <CardDescription className="mt-1">{habit.description}</CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteHabit(habit.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => deleteHabit(habit.id)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <Badge variant="outline">{habit.category}</Badge>
-                <div className="flex items-center space-x-1">
-                  <Flame className="h-4 w-4 text-orange-500" />
-                  <span className="text-sm font-medium">{habit.streak} days</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Today's Progress</span>
-                  <span className="text-sm font-medium">
-                    {habit.completedToday ? 'Completed' : 'Not Done'}
-                  </span>
-                </div>
-                
-                <Button
-                  className={`w-full ${
-                    habit.completedToday 
-                      ? 'bg-green-600 hover:bg-green-700' 
-                      : 'bg-slate-800 hover:bg-slate-700'
-                  }`}
-                  onClick={() => toggleHabit(habit.id)}
-                >
-                  {habit.completedToday ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge className={getCategoryColor(habit.category)}>
+                    {getCategoryIcon(habit.category)}
+                    <span className="ml-1">{habit.category}</span>
+                  </Badge>
+                  {habit.completedToday && (
+                    <Badge className="bg-green-100 text-green-800">
+                      <Check className="h-3 w-3 mr-1" />
                       Completed
-                    </>
-                  ) : (
-                    <>
-                      <Target className="h-4 w-4 mr-2" />
-                      Mark Complete
-                    </>
+                    </Badge>
                   )}
-                </Button>
-                
-                <div className="text-xs text-slate-500">
-                  Created {habit.createdAt.toLocaleDateString()}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Current Streak</span>
+                    <div className="flex items-center gap-1">
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      <span className="font-semibold">{habit.streak} days</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Best Streak</span>
+                    <span className="font-semibold text-blue-600">{habit.bestStreak} days</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">Total Days</span>
+                    <span className="font-semibold">{habit.totalDays} days</span>
+                  </div>
+                  
+                  <Button
+                    onClick={() => toggleHabit(habit.id)}
+                    variant={habit.completedToday ? "outline" : "default"}
+                    className={`w-full ${habit.completedToday ? 'border-green-500 text-green-700' : ''}`}
+                  >
+                    {habit.completedToday ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2" />
+                        Completed Today
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Mark Complete
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredHabits.map(habit => (
+            <Card key={habit.id} className={`${habit.completedToday ? 'border-green-200 bg-green-50' : ''}`}>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={() => toggleHabit(habit.id)}
+                      variant={habit.completedToday ? "outline" : "default"}
+                      size="sm"
+                      className={habit.completedToday ? 'border-green-500 text-green-700' : ''}
+                    >
+                      {habit.completedToday ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
+                    <div>
+                      <h3 className="font-semibold">{habit.name}</h3>
+                      <p className="text-sm text-slate-600">{habit.description}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <div className="flex items-center gap-1">
+                        <Flame className="h-4 w-4 text-orange-500" />
+                        <span className="font-semibold">{habit.streak}</span>
+                      </div>
+                      <span className="text-xs text-slate-500">Streak</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="font-semibold">{habit.totalDays}</span>
+                      <span className="text-xs text-slate-500 block">Total</span>
+                    </div>
+                    <Badge className={getCategoryColor(habit.category)}>
+                      {habit.category}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteHabit(habit.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Upgrade Prompt */}
       {totalHabits >= maxHabits && (

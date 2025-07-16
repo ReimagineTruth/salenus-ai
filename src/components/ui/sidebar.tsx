@@ -2,8 +2,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
-import { NavLink } from 'react-router-dom'
-import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Lock, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings } from 'lucide-react'
+import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Lock, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Search, X, ChevronRight, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon } from 'lucide-react'
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -19,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useAuth } from '@/hooks/useAuth'
+import { Badge } from '@/components/ui/badge'
 
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -158,31 +158,34 @@ const SidebarProvider = React.forwardRef<
 SidebarProvider.displayName = "SidebarProvider"
 
 const allNavItems = [
+  // Free features
+  { name: 'Free Habit Preview', icon: <BarChart3 className="h-5 w-5" />, path: 'free-preview', feature: 'free_habit_preview', minPlan: 'Free' },
+  { name: 'Pi Network Integration', icon: <Users className="h-5 w-5" />, path: 'pi-network', feature: 'pi_network_integration', minPlan: 'Free' },
   // Basic features
-  { name: 'Habit Tracking', icon: <BarChart3 className="h-5 w-5" />, path: '/dashboard/habits', feature: 'habit_tracking', minPlan: 'Basic' },
-  { name: 'Task Management', icon: <ClipboardList className="h-5 w-5" />, path: '/dashboard/tasks', feature: 'task_management', minPlan: 'Basic' },
-  { name: 'Community Challenges', icon: <Users className="h-5 w-5" />, path: '/dashboard/challenges', feature: 'community_challenges', minPlan: 'Basic' },
-  { name: 'Cross-Platform Sync', icon: <Cloud className="h-5 w-5" />, path: '/dashboard/sync', feature: 'cross_platform_sync', minPlan: 'Basic' },
-  { name: 'Mobile App Access', icon: <Smartphone className="h-5 w-5" />, path: '/dashboard/mobile', feature: 'mobile_app', minPlan: 'Basic' },
-  { name: 'Basic Notifications', icon: <Bell className="h-5 w-5" />, path: '/dashboard/notifications', feature: 'basic_notifications', minPlan: 'Basic' },
+  { name: 'Habit Tracking', icon: <BarChart3 className="h-5 w-5" />, path: 'habits', feature: 'habit_tracking', minPlan: 'Basic' },
+  { name: 'Task Management', icon: <ClipboardList className="h-5 w-5" />, path: 'tasks', feature: 'task_management', minPlan: 'Basic' },
+  { name: 'Community Challenges', icon: <Users className="h-5 w-5" />, path: 'challenges', feature: 'community_challenges', minPlan: 'Basic' },
+  { name: 'Cross-Platform Sync', icon: <Cloud className="h-5 w-5" />, path: 'sync', feature: 'cross_platform_sync', minPlan: 'Basic' },
+  { name: 'Mobile App Access', icon: <Smartphone className="h-5 w-5" />, path: 'mobile', feature: 'mobile_app', minPlan: 'Basic' },
+  { name: 'Basic Notifications', icon: <Bell className="h-5 w-5" />, path: 'notifications', feature: 'basic_notifications', minPlan: 'Basic' },
   // Pro features
-  { name: 'Mood Tracker', icon: <Heart className="h-5 w-5" />, path: '/dashboard/mood', feature: 'mood_tracking', minPlan: 'Pro' },
-  { name: 'Advanced Goals', icon: <Star className="h-5 w-5" />, path: '/dashboard/goals', feature: 'advanced_goals', minPlan: 'Pro' },
-  { name: 'Habit Journal', icon: <BookOpen className="h-5 w-5" />, path: '/dashboard/journal', feature: 'habit_journal', minPlan: 'Pro' },
-  { name: 'Progress Photos', icon: <Camera className="h-5 w-5" />, path: '/dashboard/photos', feature: 'progress_photos', minPlan: 'Pro' },
-  { name: 'Custom Challenges', icon: <Trophy className="h-5 w-5" />, path: '/dashboard/custom-challenges', feature: 'custom_challenges', minPlan: 'Pro' },
-  { name: 'Streak Protection', icon: <Flame className="h-5 w-5" />, path: '/dashboard/streak-protection', feature: 'streak_protection', minPlan: 'Pro' },
-  { name: 'Smart Reminders', icon: <Bell className="h-5 w-5" />, path: '/dashboard/smart-reminders', feature: 'smart_reminders', minPlan: 'Pro' },
-  { name: 'Priority Support', icon: <MessageSquare className="h-5 w-5" />, path: '/dashboard/support', feature: 'priority_support', minPlan: 'Pro' },
+  { name: 'Mood Tracker', icon: <Heart className="h-5 w-5" />, path: 'mood', feature: 'mood_tracking', minPlan: 'Pro' },
+  { name: 'Advanced Goals', icon: <Star className="h-5 w-5" />, path: 'goals', feature: 'advanced_goals', minPlan: 'Pro' },
+  { name: 'Habit Journal', icon: <BookOpen className="h-5 w-5" />, path: 'journal', feature: 'habit_journal', minPlan: 'Pro' },
+  { name: 'Progress Photos', icon: <Camera className="h-5 w-5" />, path: 'photos', feature: 'progress_photos', minPlan: 'Pro' },
+  { name: 'Custom Challenges', icon: <Trophy className="h-5 w-5" />, path: 'custom-challenges', feature: 'custom_challenges', minPlan: 'Pro' },
+  { name: 'Streak Protection', icon: <Flame className="h-5 w-5" />, path: 'streak-protection', feature: 'streak_protection', minPlan: 'Pro' },
+  { name: 'Smart Reminders', icon: <Bell className="h-5 w-5" />, path: 'smart-reminders', feature: 'smart_reminders', minPlan: 'Pro' },
+  { name: 'Priority Support', icon: <MessageSquare className="h-5 w-5" />, path: 'support', feature: 'priority_support', minPlan: 'Pro' },
   // Premium features
-  { name: 'AI Personal Coach', icon: <Sparkles className="h-5 w-5" />, path: '/dashboard/ai-coach', feature: 'ai_coaching', minPlan: 'Premium' },
-  { name: 'Advanced Analytics', icon: <PieChart className="h-5 w-5" />, path: '/dashboard/analytics', feature: 'advanced_analytics', minPlan: 'Premium' },
-  { name: 'Calendar Integration', icon: <Calendar className="h-5 w-5" />, path: '/dashboard/calendar', feature: 'calendar_integration', minPlan: 'Premium' },
-  { name: 'VIP Support', icon: <Shield className="h-5 w-5" />, path: '/dashboard/vip-support', feature: 'vip_support', minPlan: 'Premium' },
-  { name: 'Exclusive Features', icon: <Lightbulb className="h-5 w-5" />, path: '/dashboard/exclusive', feature: 'exclusive_features', minPlan: 'Premium' },
-  { name: 'Personalized Courses', icon: <GraduationCap className="h-5 w-5" />, path: '/dashboard/courses', feature: 'personalized_courses', minPlan: 'Premium' },
-  { name: 'API Access', icon: <Globe className="h-5 w-5" />, path: '/dashboard/api', feature: 'api_access', minPlan: 'Premium' },
-  { name: 'White-Label Options', icon: <Settings className="h-5 w-5" />, path: '/dashboard/white-label', feature: 'white_label', minPlan: 'Premium' },
+  { name: 'AI Personal Coach', icon: <Sparkles className="h-5 w-5" />, path: 'ai-coach', feature: 'ai_coaching', minPlan: 'Premium' },
+  { name: 'Advanced Analytics', icon: <PieChart className="h-5 w-5" />, path: 'analytics', feature: 'advanced_analytics', minPlan: 'Premium' },
+  { name: 'Calendar Integration', icon: <Calendar className="h-5 w-5" />, path: 'calendar', feature: 'calendar_integration', minPlan: 'Premium' },
+  { name: 'VIP Support', icon: <Shield className="h-5 w-5" />, path: 'vip-support', feature: 'vip_support', minPlan: 'Premium' },
+  { name: 'Exclusive Features', icon: <Lightbulb className="h-5 w-5" />, path: 'exclusive', feature: 'exclusive_features', minPlan: 'Premium' },
+  { name: 'Personalized Courses', icon: <GraduationCap className="h-5 w-5" />, path: 'courses', feature: 'personalized_courses', minPlan: 'Premium' },
+  { name: 'API Access', icon: <Globe className="h-5 w-5" />, path: 'api', feature: 'api_access', minPlan: 'Premium' },
+  { name: 'White-Label Options', icon: <Settings className="h-5 w-5" />, path: 'white-label', feature: 'white_label', minPlan: 'Premium' },
 ];
 
 export const Sidebar = ({ 
@@ -192,6 +195,10 @@ export const Sidebar = ({
   onLockedFeatureClick?: (feature: string, minPlan: string) => void;
   userPlan?: string;
 }) => {
+  const isMobile = useIsMobile();
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [focusedIndex, setFocusedIndex] = React.useState(-1);
+
   // Check if user has access to a specific plan level
   const hasPlanAccess = (requiredPlan: string) => {
     const planHierarchy = { 'Free': 0, 'Basic': 1, 'Pro': 2, 'Premium': 3 };
@@ -200,58 +207,212 @@ export const Sidebar = ({
     return userPlanLevel >= requiredPlanLevel;
   };
 
+  // Filter items based on search
+  const filteredItems = allNavItems.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Keyboard navigation
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedIndex(prev => Math.max(prev - 1, -1));
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (focusedIndex >= 0) {
+          const item = filteredItems[focusedIndex];
+          if (hasPlanAccess(item.minPlan)) {
+            window.location.href = `#${item.path}`;
+          } else {
+            onLockedFeatureClick?.(item.feature, item.minPlan);
+          }
+        }
+        break;
+      case 'Escape':
+        setSearchQuery('');
+        setFocusedIndex(-1);
+        break;
+    }
+  };
+
   return (
-    <aside className="h-screen w-64 bg-white border-r border-slate-200 flex flex-col">
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100">
-        <img src="/logo.png" alt="Salenus AI Logo" className="h-10 w-10 rounded-full" />
-        <span className="font-heading text-xl font-bold text-navy-900">Salenus A.I</span>
+    <aside className="h-screen w-64 bg-white border-r border-slate-200 flex flex-col shadow-lg">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between gap-3 px-6 py-6 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <img src="/logo.png" alt="Salenus AI Logo" className="h-10 w-10 rounded-full" />
+            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+          </div>
+          <div>
+            <span className="font-heading text-xl font-bold text-navy-900">Salenus A.I</span>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline" className="text-xs">
+                {userPlan} Plan
+              </Badge>
+              {isMobile && (
+                <Badge variant="secondary" className="text-xs">
+                  <MobileIcon className="h-3 w-3 mr-1" />
+                  Mobile
+                </Badge>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Mobile Close Button */}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.history.back()}
+            className="lg:hidden"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
       
-      {/* Plan indicator */}
+      {/* Enhanced Plan indicator */}
       <div className="px-6 py-3 border-b border-slate-100">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-700">{userPlan} Plan</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">{userPlan} Plan</span>
+            <div className="flex items-center gap-1">
+              {isMobile ? (
+                <MobileIcon className="h-3 w-3 text-slate-400" />
+              ) : (
+                <Monitor className="h-3 w-3 text-slate-400" />
+              )}
+            </div>
+          </div>
           {userPlan !== 'Premium' && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onLockedFeatureClick && onLockedFeatureClick('upgrade', userPlan === 'Free' ? 'Basic' : userPlan === 'Basic' ? 'Pro' : 'Premium')}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium"
             >
               Upgrade
-            </button>
+            </Button>
           )}
+        </div>
+      </div>
+
+      {/* Enhanced Search Bar */}
+      <div className="px-4 py-3 border-b border-slate-100">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search features..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="pl-10 pr-4 h-9 text-sm"
+          />
         </div>
       </div>
       
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-        {/* Basic Features */}
-        <div className="mb-4">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Basic Features</h3>
-          {allNavItems.filter(item => item.minPlan === 'Basic').map(item => {
+        {/* Free Features */}
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+            <span>Free Features</span>
+            <Badge variant="secondary" className="text-xs">2</Badge>
+          </h3>
+          {filteredItems.filter(item => item.minPlan === 'Free').map((item, index) => {
             const locked = !hasPlanAccess(item.minPlan);
+            const isFocused = focusedIndex === index;
+            
             return (
-              <div key={item.name}>
+              <div key={item.name} className="mb-1">
                 {locked ? (
-                  <button
-                    className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item transition-all duration-200 ${
+                      isFocused ? 'bg-slate-100 ring-2 ring-blue-500' : ''
+                    }`}
                     onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
-                    type="button"
+                    onFocus={() => setFocusedIndex(index)}
+                    onBlur={() => setFocusedIndex(-1)}
                   >
                     {item.icon}
-                    {item.name}
-                    <Lock className="h-4 w-4 ml-auto text-slate-300" />
-                  </button>
+                    <span className="flex-1 text-left">{item.name}</span>
+                    <Lock className="h-4 w-4 text-slate-300" />
+                  </Button>
                 ) : (
-                  <NavLink
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-300 sidebar-item ${
-                        isActive ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
-                      }`
-                    }
+                  <button
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-200 sidebar-item w-full text-left ${
+                      isFocused ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                    } ${isFocused ? 'ring-2 ring-blue-500' : ''}`}
+                    onClick={() => {
+                      if (onLockedFeatureClick) {
+                        onLockedFeatureClick(item.name, item.path);
+                      }
+                    }}
+                    onFocus={() => setFocusedIndex(index)}
+                    onBlur={() => setFocusedIndex(-1)}
                   >
                     {item.icon}
-                    {item.name}
-                  </NavLink>
+                    <span className="flex-1">{item.name}</span>
+                    <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Basic Features */}
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+            <span>Basic Features</span>
+            <Badge variant="default" className="text-xs">6</Badge>
+          </h3>
+          {filteredItems.filter(item => item.minPlan === 'Basic').map((item, index) => {
+            const locked = !hasPlanAccess(item.minPlan);
+            const globalIndex = filteredItems.filter(i => i.minPlan === 'Free').length + index;
+            const isFocused = focusedIndex === globalIndex;
+            
+            return (
+              <div key={item.name} className="mb-1">
+                {locked ? (
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item transition-all duration-200 ${
+                      isFocused ? 'bg-slate-100 ring-2 ring-blue-500' : ''
+                    }`}
+                    onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
+                    onFocus={() => setFocusedIndex(globalIndex)}
+                    onBlur={() => setFocusedIndex(-1)}
+                  >
+                    {item.icon}
+                    <span className="flex-1 text-left">{item.name}</span>
+                    <Lock className="h-4 w-4 text-slate-300" />
+                  </Button>
+                ) : (
+                  <button
+                    className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-200 sidebar-item w-full text-left ${
+                      isFocused ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                    } ${isFocused ? 'ring-2 ring-blue-500' : ''}`}
+                    onClick={() => {
+                      if (onLockedFeatureClick) {
+                        onLockedFeatureClick(item.name, item.path);
+                      }
+                    }}
+                    onFocus={() => setFocusedIndex(globalIndex)}
+                    onBlur={() => setFocusedIndex(-1)}
+                  >
+                    {item.icon}
+                    <span className="flex-1 text-left">{item.name}</span>
+                    <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
                 )}
               </div>
             );
@@ -260,34 +421,49 @@ export const Sidebar = ({
 
         {/* Pro Features */}
         {hasPlanAccess('Pro') && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Pro Features</h3>
-            {allNavItems.filter(item => item.minPlan === 'Pro').map(item => {
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+              <span>Pro Features</span>
+              <Badge variant="outline" className="text-xs">8</Badge>
+            </h3>
+            {filteredItems.filter(item => item.minPlan === 'Pro').map((item, index) => {
               const locked = !hasPlanAccess(item.minPlan);
+              const globalIndex = filteredItems.filter(i => ['Free', 'Basic'].includes(i.minPlan)).length + index;
+              const isFocused = focusedIndex === globalIndex;
+              
               return (
-                <div key={item.name}>
+                <div key={item.name} className="mb-1">
                   {locked ? (
-                    <button
-                      className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                    <Button
+                      variant="ghost"
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item transition-all duration-200 ${
+                        isFocused ? 'bg-slate-100 ring-2 ring-blue-500' : ''
+                      }`}
                       onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
-                      type="button"
+                      onFocus={() => setFocusedIndex(globalIndex)}
+                      onBlur={() => setFocusedIndex(-1)}
                     >
                       {item.icon}
-                      {item.name}
-                      <Lock className="h-4 w-4 ml-auto text-slate-300" />
-                    </button>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <Lock className="h-4 w-4 text-slate-300" />
+                    </Button>
                   ) : (
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-300 sidebar-item ${
-                          isActive ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
-                        }`
-                      }
+                    <button
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-200 sidebar-item w-full text-left ${
+                        isFocused ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                      } ${isFocused ? 'ring-2 ring-blue-500' : ''}`}
+                      onClick={() => {
+                        if (onLockedFeatureClick) {
+                          onLockedFeatureClick(item.name, item.path);
+                        }
+                      }}
+                      onFocus={() => setFocusedIndex(globalIndex)}
+                      onBlur={() => setFocusedIndex(-1)}
                     >
                       {item.icon}
-                      {item.name}
-                    </NavLink>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
                   )}
                 </div>
               );
@@ -297,34 +473,49 @@ export const Sidebar = ({
 
         {/* Premium Features */}
         {hasPlanAccess('Premium') && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Premium Features</h3>
-            {allNavItems.filter(item => item.minPlan === 'Premium').map(item => {
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+              <span>Premium Features</span>
+              <Badge variant="default" className="text-xs">8</Badge>
+            </h3>
+            {filteredItems.filter(item => item.minPlan === 'Premium').map((item, index) => {
               const locked = !hasPlanAccess(item.minPlan);
+              const globalIndex = filteredItems.filter(i => ['Free', 'Basic', 'Pro'].includes(i.minPlan)).length + index;
+              const isFocused = focusedIndex === globalIndex;
+              
               return (
-                <div key={item.name}>
+                <div key={item.name} className="mb-1">
                   {locked ? (
-                    <button
-                      className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                    <Button
+                      variant="ghost"
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item transition-all duration-200 ${
+                        isFocused ? 'bg-slate-100 ring-2 ring-blue-500' : ''
+                      }`}
                       onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
-                      type="button"
+                      onFocus={() => setFocusedIndex(globalIndex)}
+                      onBlur={() => setFocusedIndex(-1)}
                     >
                       {item.icon}
-                      {item.name}
-                      <Lock className="h-4 w-4 ml-auto text-slate-300" />
-                    </button>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <Lock className="h-4 w-4 text-slate-300" />
+                    </Button>
                   ) : (
-                    <NavLink
-                      to={item.path}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-300 sidebar-item ${
-                          isActive ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
-                        }`
-                      }
+                    <button
+                      className={`flex items-center gap-3 px-4 py-2 rounded-lg font-medium transition-all duration-200 sidebar-item w-full text-left ${
+                        isFocused ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-slate-700 hover:bg-slate-100'
+                      } ${isFocused ? 'ring-2 ring-blue-500' : ''}`}
+                      onClick={() => {
+                        if (onLockedFeatureClick) {
+                          onLockedFeatureClick(item.name, item.path);
+                        }
+                      }}
+                      onFocus={() => setFocusedIndex(globalIndex)}
+                      onBlur={() => setFocusedIndex(-1)}
                     >
                       {item.icon}
-                      {item.name}
-                    </NavLink>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
                   )}
                 </div>
               );
@@ -334,57 +525,86 @@ export const Sidebar = ({
 
         {/* Show locked Pro/Premium features for lower plans */}
         {!hasPlanAccess('Pro') && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Pro Features</h3>
-            {allNavItems.filter(item => item.minPlan === 'Pro').slice(0, 3).map(item => (
-              <button
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+              <span>Pro Features</span>
+              <Badge variant="outline" className="text-xs">8</Badge>
+            </h3>
+            {filteredItems.filter(item => item.minPlan === 'Pro').slice(0, 3).map((item, index) => (
+              <Button
                 key={item.name}
-                className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                variant="ghost"
+                className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item transition-all duration-200"
                 onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
-                type="button"
               >
                 {item.icon}
-                {item.name}
-                <Lock className="h-4 w-4 ml-auto text-slate-300" />
-              </button>
+                <span className="flex-1 text-left">{item.name}</span>
+                <Lock className="h-4 w-4 text-slate-300" />
+              </Button>
             ))}
-            <button
-              className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-blue-600 cursor-pointer w-full hover:bg-blue-50 sidebar-item"
+            <Button
+              variant="ghost"
+              className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-blue-600 cursor-pointer w-full hover:bg-blue-50 sidebar-item transition-all duration-200"
               onClick={() => onLockedFeatureClick && onLockedFeatureClick('upgrade', 'Pro')}
-              type="button"
             >
               <Sparkles className="h-4 w-4" />
-              Upgrade to Pro
-            </button>
+              <span className="flex-1 text-left">Upgrade to Pro</span>
+            </Button>
           </div>
         )}
 
         {!hasPlanAccess('Premium') && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-2">Premium Features</h3>
-            {allNavItems.filter(item => item.minPlan === 'Premium').slice(0, 3).map(item => (
-              <button
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-2">
+              <span>Premium Features</span>
+              <Badge variant="default" className="text-xs">8</Badge>
+            </h3>
+            {filteredItems.filter(item => item.minPlan === 'Premium').slice(0, 3).map((item, index) => (
+              <Button
                 key={item.name}
-                className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item"
+                variant="ghost"
+                className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-slate-400 cursor-pointer w-full hover:bg-slate-50 relative sidebar-item transition-all duration-200"
                 onClick={() => onLockedFeatureClick && onLockedFeatureClick(item.feature, item.minPlan)}
-                type="button"
               >
                 {item.icon}
-                {item.name}
-                <Lock className="h-4 w-4 ml-auto text-slate-300" />
-              </button>
+                <span className="flex-1 text-left">{item.name}</span>
+                <Lock className="h-4 w-4 text-slate-300" />
+              </Button>
             ))}
-            <button
-              className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-purple-600 cursor-pointer w-full hover:bg-purple-50 sidebar-item"
+            <Button
+              variant="ghost"
+              className="flex items-center gap-3 px-4 py-2 rounded-lg font-medium text-purple-600 cursor-pointer w-full hover:bg-purple-50 sidebar-item transition-all duration-200"
               onClick={() => onLockedFeatureClick && onLockedFeatureClick('upgrade', 'Premium')}
-              type="button"
             >
               <Sparkles className="h-4 w-4" />
-              Upgrade to Premium
-            </button>
+              <span className="flex-1 text-left">Upgrade to Premium</span>
+            </Button>
           </div>
         )}
       </nav>
+
+      {/* Enhanced Footer */}
+      <div className="px-4 py-3 border-t border-slate-100">
+        <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            {isMobile ? (
+              <>
+                <MobileIcon className="h-3 w-3" />
+                <span>Mobile View</span>
+              </>
+            ) : (
+              <>
+                <Monitor className="h-3 w-3" />
+                <span>Desktop View</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Keyboard className="h-3 w-3" />
+            <span>⌘B</span>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 };

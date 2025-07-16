@@ -7,12 +7,8 @@ import { useState, useEffect } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { UserDashboard } from "./components/UserDashboard";
-import Privacy from './pages/Privacy';
-import Terms from './pages/Terms';
-import About from './pages/About';
-import Cookies from './pages/Cookies';
-import Tutorial from './pages/Tutorial';
-import Wiki from './pages/Wiki';
+import { HomeDashboard } from "./components/HomeDashboard";
+
 import FooterPageLayout from './components/FooterPageLayout';
 import LoginPage from './pages/LoginPage';
 import LogoutPage from './pages/LogoutPage';
@@ -30,29 +26,78 @@ const App = () => {
   const [hasPaid, setHasPaid] = useState(false);
   const [pricingToggle, setPricingToggle] = useState('monthly');
 
-  // Simulate splash screen loading
+  // Initialize app and check for existing user
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const initializeApp = () => {
+      // Check for existing user in localStorage
+      const savedUser = localStorage.getItem('currentUser');
+      
+      if (savedUser) {
+        try {
+          const userData = JSON.parse(savedUser);
+          if (userData.planExpiry && typeof userData.planExpiry === 'string') {
+            userData.planExpiry = new Date(userData.planExpiry);
+          }
+          
+          // Ensure user has required fields
+          const validatedUser = {
+            ...userData,
+            plan: userData.plan || 'Free',
+            hasPaid: userData.hasPaid || false,
+            planExpiry: userData.planExpiry || null,
+            isActive: userData.isActive !== false
+          };
+          
+          // Set user state
+          setUser(validatedUser);
+          setSelectedPlan(validatedUser.plan);
+          setHasPaid(validatedUser.hasPaid);
+          
+          // All logged-in users should go to dashboard, regardless of plan
+          // The dashboard will handle plan-specific features and restrictions
+          setCurrentStep('dashboard');
+          
+          // Update localStorage with validated data
+          localStorage.setItem('currentUser', JSON.stringify(validatedUser));
+        } catch (error) {
+          console.error('Error parsing saved user:', error);
+          localStorage.removeItem('currentUser');
+          setCurrentStep('login');
+        }
+      } else {
+        setCurrentStep('login');
+      }
+      
       setIsLoading(false);
-      setCurrentStep('login');
-    }, 5000); // 5 seconds splash screen
+    };
+
+    // Simulate splash screen for 3 seconds, then initialize
+    const timer = setTimeout(() => {
+      initializeApp();
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
 
   // Handle workflow progression
   const handleLogin = (userData: any) => {
-    // Set user with proper plan information
+    // Ensure user has proper plan information and restore their existing plan
     const userWithPlan = {
       ...userData,
       plan: userData.plan || 'Free',
       hasPaid: userData.hasPaid || false,
-      planExpiry: userData.planExpiry || null
+      planExpiry: userData.planExpiry || null,
+      isActive: userData.isActive !== false
     };
+    
+    // Update localStorage to ensure plan persistence
+    localStorage.setItem('currentUser', JSON.stringify(userWithPlan));
+    
     setUser(userWithPlan);
     setSelectedPlan(userWithPlan.plan);
     setHasPaid(userWithPlan.hasPaid);
-    setCurrentStep(userWithPlan.hasPaid ? 'dashboard' : 'landing');
+    // All logged-in users can access dashboard
+    setCurrentStep('dashboard');
   };
 
   const handleSignup = (userData: any) => {
@@ -61,12 +106,18 @@ const App = () => {
       ...userData,
       plan: 'Free',
       hasPaid: false,
-      planExpiry: null
+      planExpiry: null,
+      isActive: true
     };
+    
+    // Update localStorage to ensure plan persistence
+    localStorage.setItem('currentUser', JSON.stringify(userWithPlan));
+    
     setUser(userWithPlan);
     setSelectedPlan('Free');
     setHasPaid(false);
-    setCurrentStep('landing');
+    // New users can access dashboard immediately
+    setCurrentStep('dashboard');
   };
 
   const handleChoosePlan = (plan: string, billing: string = 'monthly') => {
@@ -91,6 +142,9 @@ const App = () => {
     
     console.log('Updated user state:', updatedUser);
     
+    // Update localStorage
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    
     setUser(updatedUser);
     setHasPaid(true);
     setCurrentStep('dashboard');
@@ -105,6 +159,10 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    // Clear localStorage
+    localStorage.removeItem('currentUser');
+    
+    // Reset state
     setUser(null);
     setSelectedPlan('Free');
     setHasPaid(false);
@@ -284,8 +342,8 @@ const App = () => {
     );
   }
 
-  // Show dashboard (only after payment)
-  if (currentStep === 'dashboard' && hasPaid && user) {
+  // Show dashboard (for all logged-in users)
+  if (currentStep === 'dashboard' && user) {
     return (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
@@ -307,9 +365,9 @@ const App = () => {
     );
   }
 
-  // Redirect unpaid users to landing page
-  if (currentStep === 'dashboard' && (!hasPaid || !user)) {
-    setCurrentStep('landing');
+  // Redirect non-logged users to login
+  if (currentStep === 'dashboard' && !user) {
+    setCurrentStep('login');
     return null;
   }
 
@@ -325,7 +383,7 @@ const App = () => {
             <Route
               path="/dashboard/*"
               element={
-                hasPaid && user ? (
+                user ? (
                   <UserDashboard 
                     user={user} 
                     onLogout={handleLogout}
@@ -335,7 +393,34 @@ const App = () => {
                     }}
                   />
                 ) : (
-                  <Navigate to="/" replace />
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/home"
+              element={
+                user ? (
+                  <HomeDashboard 
+                    user={user} 
+                    onLogout={handleLogout}
+                    onUpgrade={(plan) => {
+                      setSelectedPlan(plan);
+                      setCurrentStep('payment');
+                    }}
+                  />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                user ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <LoginPage onLogin={handleLogin} onSignup={handleSignup} />
                 )
               }
             />
@@ -351,12 +436,6 @@ const App = () => {
                     <Route path="/sync" element={<Navigate to="/dashboard/sync" replace />} />
                     <Route path="/mobile" element={<Navigate to="/dashboard/mobile" replace />} />
                     <Route path="/notifications" element={<Navigate to="/dashboard/notifications" replace />} />
-                    <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/terms" element={<Terms />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/cookies" element={<Cookies />} />
-                    <Route path="/tutorial" element={<Tutorial />} />
-                    <Route path="/wiki" element={<Wiki />} />
                     <Route path="/logout" element={<LogoutPage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
