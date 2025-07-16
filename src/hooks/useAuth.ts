@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { SupabaseService } from '@/lib/supabase-service';
+import type { User } from '@supabase/supabase-js';
 
 export type UserPlan = 'Free' | 'Basic' | 'Pro' | 'Premium';
 
-export interface User {
+export interface AppUser {
   id: string;
   email: string;
   name: string;
@@ -10,153 +13,176 @@ export interface User {
   planExpiry: Date | null;
   isActive: boolean;
   createdAt: string;
+  hasPaid: boolean;
+  avatarUrl?: string;
 }
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [authUser, setAuthUser] = useState<User | null>(null);
 
-  // Local storage login function
-  const login = async (email: string, password: string, plan: UserPlan) => {
-    setIsLoading(true);
-    
+  // Initialize auth state
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUser(session?.user ?? null);
+      if (session?.user) {
+        loadUserData(session.user.id);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setAuthUser(session?.user ?? null);
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadUserData(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserData = async (authUserId: string) => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Check if user exists in our database
+      let appUser = await SupabaseService.getUser(authUserId);
       
-      // Check if user exists in localStorage
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const existingUser = users.find((u: User) => u.email === email);
-      
-      if (!existingUser) {
-        throw new Error('User not found. Please sign up first.');
+      if (!appUser) {
+        // Create new user if they don't exist
+        const authUser = await supabase.auth.getUser();
+        if (authUser.data.user) {
+          appUser = await SupabaseService.createUser({
+            email: authUser.data.user.email!,
+            name: authUser.data.user.user_metadata?.full_name || authUser.data.user.email!.split('@')[0],
+            plan: 'Free',
+            authUserId: authUserId
+          });
+        }
       }
-      
-      // Simple password check (in real app, use proper hashing)
-      if (existingUser.password !== password) {
-        throw new Error('Invalid password.');
+
+      if (appUser) {
+        setUser({
+          id: appUser.id,
+          email: appUser.email,
+          name: appUser.name,
+          plan: appUser.plan as UserPlan,
+          planExpiry: appUser.plan_expiry ? new Date(appUser.plan_expiry) : null,
+          isActive: appUser.is_active,
+          createdAt: appUser.created_at,
+          hasPaid: appUser.has_paid,
+          avatarUrl: appUser.avatar_url || undefined
+        });
       }
-      
-      // Remove password from user object and ensure proper structure
-      const { password: _, ...userData } = existingUser;
-      const validatedUser = {
-        ...userData,
-        plan: userData.plan || 'Free',
-        hasPaid: userData.hasPaid || false,
-        planExpiry: userData.planExpiry || null,
-        isActive: userData.isActive !== false
-      };
-      
-      setUser(validatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(validatedUser));
-      setIsLoading(false);
-      
-      return validatedUser;
     } catch (error) {
-      setIsLoading(false);
-      throw error;
+      console.error('Error loading user data:', error);
     }
   };
 
-  // Local storage register function
+  // Sign up with email and password
   const register = async (email: string, password: string, name: string, plan: UserPlan = 'Free') => {
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check if user already exists
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const existingUser = users.find((u: User) => u.email === email);
-      
-      if (existingUser) {
-        throw new Error('User already exists. Please sign in instead.');
-      }
-      
-      // Create new user with proper structure
-      const newUser: User = {
-        id: Date.now().toString(),
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        plan,
-        planExpiry: null,
-        isActive: true,
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add hasPaid field for new users
-      const userWithPaymentStatus = {
-        ...newUser,
-        hasPaid: false
-      };
-      
-      // Save user to localStorage
-      users.push({ ...userWithPaymentStatus, password });
-      localStorage.setItem('users', JSON.stringify(users));
-      
-      // Set as current user
-      setUser(userWithPaymentStatus);
-      localStorage.setItem('currentUser', JSON.stringify(userWithPaymentStatus));
-      setIsLoading(false);
-      
-      return userWithPaymentStatus;
+        password,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data.user) {
+        // User will be created in loadUserData when auth state changes
+        return data.user;
+      }
+
+      return null;
     } catch (error) {
-      setIsLoading(false);
+      console.error('Registration error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Local storage logout function
+  // Sign in with email and password
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return data.user;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Sign out
   const logout = async () => {
     try {
-      setUser(null);
-      localStorage.removeItem('currentUser');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
-  // Local storage upgrade plan function
+  // Upgrade plan
   const upgradePlan = async (newPlan: UserPlan) => {
-    if (!user) return;
+    if (!user) return null;
     
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Update user plan with payment status
-      const updatedUser = {
-        ...user,
+      const planExpiry = new Date();
+      planExpiry.setDate(planExpiry.getDate() + 30); // 30 days from now
+
+      const updatedUser = await SupabaseService.updateUser(user.id, {
         plan: newPlan,
-        hasPaid: true,
-        planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-      };
-      
-      // Update in localStorage
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const userIndex = users.findIndex((u: User) => u.id === user.id);
-      
-      if (userIndex !== -1) {
-        users[userIndex] = { 
-          ...users[userIndex], 
-          plan: newPlan, 
-          hasPaid: true,
-          planExpiry: updatedUser.planExpiry 
-        };
-        localStorage.setItem('users', JSON.stringify(users));
+        has_paid: true,
+        plan_expiry: planExpiry.toISOString()
+      });
+
+      if (updatedUser) {
+        setUser({
+          ...user,
+          plan: updatedUser.plan as UserPlan,
+          planExpiry: updatedUser.plan_expiry ? new Date(updatedUser.plan_expiry) : null,
+          hasPaid: updatedUser.has_paid
+        });
       }
-      
-      setUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-      setIsLoading(false);
-      
+
       return updatedUser;
     } catch (error) {
-      setIsLoading(false);
+      console.error('Upgrade plan error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -267,8 +293,8 @@ export const useAuth = () => {
   const checkPlanStatus = () => {
     if (!user) return { isValid: false, isExpired: false, isExpiringSoon: false };
     
-    const isExpired = user.planExpiry && new Date(user.planExpiry) < new Date();
-    const isExpiringSoon = user.planExpiry && !isExpired && 
+    const isExpired = user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) < new Date();
+    const isExpiringSoon = user.plan !== 'Free' && user.planExpiry && !isExpired && 
       new Date(user.planExpiry).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000;
     
     return {
@@ -295,46 +321,12 @@ export const useAuth = () => {
     return user.plan;
   };
 
-  // Initialize user from localStorage
-  useEffect(() => {
-    const initializeAuth = () => {
-      const savedUser = localStorage.getItem('currentUser');
-      
-      if (savedUser) {
-        try {
-          const userData = JSON.parse(savedUser);
-          if (userData.planExpiry && typeof userData.planExpiry === 'string') {
-            userData.planExpiry = new Date(userData.planExpiry);
-          }
-          
-          // Ensure user has required fields
-          const validatedUser = {
-            ...userData,
-            plan: userData.plan || 'Free',
-            hasPaid: userData.hasPaid || false,
-            planExpiry: userData.planExpiry || null,
-            isActive: userData.isActive !== false
-          };
-          
-          setUser(validatedUser);
-          
-          // Update localStorage with validated data
-          localStorage.setItem('currentUser', JSON.stringify(validatedUser));
-        } catch (error) {
-          console.error('Error parsing saved user:', error);
-          localStorage.removeItem('currentUser');
-        }
-      }
-    };
-
-    initializeAuth();
-  }, []);
-
   return {
     user,
+    authUser,
     isLoading,
-    login,
     register,
+    login,
     logout,
     upgradePlan,
     hasFeature,

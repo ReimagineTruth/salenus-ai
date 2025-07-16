@@ -39,6 +39,48 @@ Salenus AI
 
 ## 🚀 Getting Started
 
+### Development Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd salenus-ai
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Supabase credentials
+   ```
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   
+   The application will be available at **http://localhost:3000**
+
+### Production Setup
+
+1. **Build the application**
+   ```bash
+   npm run build
+   ```
+
+2. **Preview the build**
+   ```bash
+   npm run preview
+   ```
+
+3. **Deploy to your preferred platform**
+
+### Pi Network Integration
+
 1. **Download & Install**
    Get Salenus AI from the Pi Browser (coming soon).
 

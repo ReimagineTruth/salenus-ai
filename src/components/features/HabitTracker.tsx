@@ -44,6 +44,8 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { DataService } from '@/lib/data-service';
+import type { Habit as SupabaseHabit, HabitNote as SupabaseHabitNote } from '@/lib/supabase';
 
 interface Habit {
   id: string;
@@ -83,6 +85,7 @@ export const HabitTracker: React.FC = () => {
   const { user, hasFeature, upgradePlan } = useAuth();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [notes, setNotes] = useState<HabitNote[]>([]);
+  const [loading, setLoading] = useState(false);
   const [newHabit, setNewHabit] = useState({ 
     name: '', 
     description: '', 
@@ -113,75 +116,124 @@ export const HabitTracker: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Load habits from localStorage
+  // Load habits from Supabase
   useEffect(() => {
-    const savedHabits = localStorage.getItem(`habits_${user?.id}`);
-    const savedNotes = localStorage.getItem(`notes_${user?.id}`);
-    if (savedHabits) {
-      setHabits(JSON.parse(savedHabits));
-    }
-    if (savedNotes) {
-      setNotes(JSON.parse(savedNotes));
+    if (user?.id) {
+      loadHabits();
     }
   }, [user?.id]);
 
-  // Save habits to localStorage
-  useEffect(() => {
-    if (user?.id) {
-      localStorage.setItem(`habits_${user?.id}`, JSON.stringify(habits));
-      localStorage.setItem(`notes_${user?.id}`, JSON.stringify(notes));
+  const loadHabits = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    try {
+      const supabaseHabits = await DataService.getHabits(user.id);
+      const transformedHabits: Habit[] = supabaseHabits.map(habit => ({
+        id: habit.id,
+        name: habit.name,
+        description: habit.description,
+        streak: habit.streak,
+        totalDays: habit.total_days,
+        completedToday: habit.completed_today,
+        goal: habit.goal,
+        category: habit.category,
+        createdAt: new Date(habit.created_at),
+        lastCompleted: habit.last_completed ? new Date(habit.last_completed) : undefined,
+        bestStreak: habit.best_streak,
+        weeklyProgress: habit.weekly_progress,
+        monthlyProgress: habit.monthly_progress,
+        yearlyProgress: habit.yearly_progress,
+        images: habit.images,
+        notes: habit.notes,
+        reminderTime: habit.reminder_time,
+        reminderEnabled: habit.reminder_enabled,
+        difficulty: habit.difficulty,
+        priority: habit.priority,
+        tags: habit.tags,
+        milestones: habit.milestones
+      }));
+      setHabits(transformedHabits);
+    } catch (error) {
+      console.error('Error loading habits:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [habits, notes, user?.id]);
+  };
 
-  // Reset daily completion status at midnight
+  // Load notes for a specific habit
+  const loadHabitNotes = async (habitId: string) => {
+    try {
+      const supabaseNotes = await DataService.getHabitNotes(habitId);
+      const transformedNotes: HabitNote[] = supabaseNotes.map(note => ({
+        id: note.id,
+        habitId: note.habit_id,
+        content: note.content,
+        date: new Date(note.date),
+        mood: note.mood || undefined,
+        energy: note.energy || undefined
+      }));
+      setNotes(transformedNotes);
+    } catch (error) {
+      console.error('Error loading habit notes:', error);
+    }
+  };
+
+  // Set up real-time subscriptions
   useEffect(() => {
-    const checkAndResetDaily = () => {
-      const now = new Date();
-      const lastReset = localStorage.getItem(`lastReset_${user?.id}`);
-      const lastResetDate = lastReset ? new Date(lastReset) : null;
-      
-      if (!lastResetDate || lastResetDate.getDate() !== now.getDate()) {
-        setHabits(prev => prev.map(habit => ({
-          ...habit,
-          completedToday: false
-        })));
-        localStorage.setItem(`lastReset_${user?.id}`, now.toISOString());
-      }
-    };
+    if (!user?.id) return;
 
-    checkAndResetDaily();
-    const interval = setInterval(checkAndResetDaily, 60000); // Check every minute
-    return () => clearInterval(interval);
+    const subscriptions = DataService.subscribeToUserData(user.id, {
+      onHabitChange: (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+          loadHabits(); // Reload habits when changes occur
+        }
+      }
+    });
+
+    return () => {
+      subscriptions.forEach(subscription => subscription.unsubscribe());
+    };
   }, [user?.id]);
 
   // Handle file uploads
-  const handleImageUpload = (habitId: string, files: FileList) => {
-    const newImages: string[] = [];
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        newImages.push(e.target?.result as string);
-        setHabits(prev => prev.map(habit => 
-          habit.id === habitId 
-            ? { ...habit, images: [...habit.images, ...newImages] }
-            : habit
-        ));
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleImageUpload = async (habitId: string, files: FileList) => {
+    try {
+      const newImages: string[] = [];
+      for (const file of Array.from(files)) {
+        const imageUrl = await DataService.uploadHabitImage(habitId, file);
+        if (imageUrl) {
+          newImages.push(imageUrl);
+        }
+      }
+      
+      if (newImages.length > 0) {
+        const habit = habits.find(h => h.id === habitId);
+        if (habit) {
+          await DataService.updateHabit(habitId, {
+            images: [...habit.images, ...newImages]
+          });
+          await loadHabits(); // Reload to get updated data
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+    }
   };
 
   // Add note to habit
-  const addNote = (habitId: string, content: string, mood?: number, energy?: number) => {
-    const note: HabitNote = {
-      id: Date.now().toString(),
-      habitId,
-      content,
-      date: new Date(),
-      mood,
-      energy
-    };
-    setNotes([...notes, note]);
+  const addNote = async (habitId: string, content: string, mood?: number, energy?: number) => {
+    try {
+      await DataService.addHabitNote({
+        habitId,
+        content,
+        mood,
+        energy
+      });
+      await loadHabitNotes(habitId);
+    } catch (error) {
+      console.error('Error adding note:', error);
+    }
   };
 
   // Send notification
@@ -199,9 +251,8 @@ export const HabitTracker: React.FC = () => {
     setNotifications(prev => [notification, ...prev.slice(0, 9)]); // Keep last 10
   };
 
-  // Request notification permission
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
+    if ('Notification' in window && Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         sendNotification('Notifications Enabled', 'You will now receive habit reminders!');
@@ -209,92 +260,80 @@ export const HabitTracker: React.FC = () => {
     }
   };
 
-  const addHabit = () => {
-    if (!newHabit.name.trim()) return;
-    
-    const habit: Habit = {
-      id: Date.now().toString(),
-      name: newHabit.name,
-      description: newHabit.description,
-      streak: 0,
-      totalDays: 0,
-      completedToday: false,
-      goal: newHabit.goal,
-      category: newHabit.category,
-      createdAt: new Date(),
-      bestStreak: 0,
-      weeklyProgress: [0, 0, 0, 0, 0, 0, 0],
-      monthlyProgress: Array(31).fill(0),
-      yearlyProgress: Array(365).fill(0),
-      images: [],
-      notes: [],
-      reminderTime: newHabit.reminderTime,
-      reminderEnabled: newHabit.reminderEnabled,
-      difficulty: newHabit.difficulty,
-      priority: newHabit.priority,
-      tags: [],
-      milestones: []
-    };
+  const addHabit = async () => {
+    if (!user?.id || !newHabit.name.trim()) return;
 
-    setHabits([...habits, habit]);
-    setNewHabit({ 
-      name: '', 
-      description: '', 
-      goal: 1, 
-      category: 'Health',
-      difficulty: 'Medium',
-      priority: 'Medium',
-      reminderTime: '09:00',
-      reminderEnabled: true
-    });
-    setShowAddForm(false);
-    
-    sendNotification('Habit Created', `"${habit.name}" has been added to your tracker!`);
-  };
+    try {
+      setLoading(true);
+      const habit = await DataService.createHabit({
+        userId: user.id,
+        name: newHabit.name,
+        description: newHabit.description,
+        goal: newHabit.goal,
+        category: newHabit.category,
+        difficulty: newHabit.difficulty,
+        priority: newHabit.priority,
+        reminderTime: newHabit.reminderTime,
+        reminderEnabled: newHabit.reminderEnabled
+      });
 
-  const toggleHabit = (habitId: string) => {
-    setHabits(habits.map(habit => {
-      if (habit.id === habitId) {
-        const completedToday = !habit.completedToday;
-        const newStreak = completedToday ? habit.streak + 1 : Math.max(0, habit.streak - 1);
-        const newBestStreak = Math.max(habit.bestStreak, newStreak);
-        
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        const dayOfMonth = today.getDate() - 1;
-        const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-        
-        const updatedHabit = {
-          ...habit,
-          completedToday,
-          streak: newStreak,
-          bestStreak: newBestStreak,
-          totalDays: completedToday ? habit.totalDays + 1 : habit.totalDays,
-          lastCompleted: completedToday ? new Date() : habit.lastCompleted,
-          weeklyProgress: completedToday 
-            ? habit.weeklyProgress.map((val, i) => i === dayOfWeek ? val + 1 : val)
-            : habit.weeklyProgress,
-          monthlyProgress: completedToday
-            ? habit.monthlyProgress.map((val, i) => i === dayOfMonth ? val + 1 : val)
-            : habit.monthlyProgress,
-          yearlyProgress: completedToday
-            ? habit.yearlyProgress.map((val, i) => i === dayOfYear ? val + 1 : val)
-            : habit.yearlyProgress
-        };
-
-        if (completedToday) {
-          sendNotification('Habit Completed!', `Great job completing "${habit.name}"! 🔥`);
-        }
-
-        return updatedHabit;
+      if (habit) {
+        setNewHabit({ 
+          name: '', 
+          description: '', 
+          goal: 1, 
+          category: 'Health',
+          difficulty: 'Medium',
+          priority: 'Medium',
+          reminderTime: '09:00',
+          reminderEnabled: true
+        });
+        setShowAddForm(false);
+        await loadHabits(); // Reload habits
+        sendNotification('Habit Created', `${newHabit.name} has been added to your tracker!`);
       }
-      return habit;
-    }));
+    } catch (error) {
+      console.error('Error creating habit:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteHabit = (habitId: string) => {
-    setHabits(habits.filter(habit => habit.id !== habitId));
-    setNotes(notes.filter(note => note.habitId !== habitId));
+  const toggleHabit = async (habitId: string) => {
+    try {
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      const completed = !habit.completedToday;
+      const updatedHabit = await DataService.toggleHabitCompletion(habitId, completed);
+      
+      if (updatedHabit) {
+        await loadHabits(); // Reload habits to get updated data
+        
+        if (completed) {
+          sendNotification(
+            'Habit Completed!', 
+            `Great job completing "${habit.name}"! 🔥`
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling habit:', error);
+    }
+  };
+
+  const deleteHabit = async (habitId: string) => {
+    if (!confirm('Are you sure you want to delete this habit?')) return;
+
+    try {
+      const success = await DataService.deleteHabit(habitId);
+      if (success) {
+        await loadHabits(); // Reload habits
+        sendNotification('Habit Deleted', 'Habit has been removed from your tracker.');
+      }
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+    }
   };
 
   const filteredHabits = habits.filter(habit => 
@@ -472,83 +511,89 @@ export const HabitTracker: React.FC = () => {
 
       {/* Habits Grid/List */}
       <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
-        {filteredHabits.map(habit => (
-          <Card key={habit.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {getCategoryIcon(habit.category)}
-                  <div>
-                    <CardTitle className="text-lg">{habit.name}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className={getCategoryColor(habit.category)} variant="secondary">
-                        {habit.category}
-                      </Badge>
-                      <Badge className={getDifficultyColor(habit.difficulty)} variant="secondary">
-                        {habit.difficulty}
-                      </Badge>
-                      <Badge className={getPriorityColor(habit.priority)} variant="secondary">
-                        {habit.priority}
-                      </Badge>
+        {loading ? (
+          <p>Loading habits...</p>
+        ) : filteredHabits.length === 0 ? (
+          <p>No habits found in this category. Add one to get started!</p>
+        ) : (
+          filteredHabits.map(habit => (
+            <Card key={habit.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getCategoryIcon(habit.category)}
+                    <div>
+                      <CardTitle className="text-lg">{habit.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={getCategoryColor(habit.category)} variant="secondary">
+                          {habit.category}
+                        </Badge>
+                        <Badge className={getDifficultyColor(habit.difficulty)} variant="secondary">
+                          {habit.difficulty}
+                        </Badge>
+                        <Badge className={getPriorityColor(habit.priority)} variant="secondary">
+                          {habit.priority}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={habit.completedToday ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleHabit(habit.id)}
-                    className={habit.completedToday ? "bg-green-500 hover:bg-green-600" : ""}
-                  >
-                    {habit.completedToday ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedHabit(habit);
-                      setShowHabitDetails(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-3">{habit.description}</p>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Current Streak</span>
-                  <div className="flex items-center gap-1">
-                    <Flame className="h-4 w-4 text-orange-500" />
-                    <span className="font-medium">{habit.streak} days</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={habit.completedToday ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleHabit(habit.id)}
+                      className={habit.completedToday ? "bg-green-500 hover:bg-green-600" : ""}
+                    >
+                      {habit.completedToday ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedHabit(habit);
+                        setShowHabitDetails(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Best Streak</span>
-                  <div className="flex items-center gap-1">
-                    <Trophy className="h-4 w-4 text-yellow-500" />
-                    <span className="font-medium">{habit.bestStreak} days</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Total Days</span>
-                  <span className="font-medium">{habit.totalDays} days</span>
-                </div>
-                {habit.reminderEnabled && (
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-3">{habit.description}</p>
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">Reminder</span>
+                    <span className="text-sm text-gray-500">Current Streak</span>
                     <div className="flex items-center gap-1">
-                      <Bell className="h-4 w-4 text-blue-500" />
-                      <span className="font-medium">{habit.reminderTime}</span>
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      <span className="font-medium">{habit.streak} days</span>
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Best Streak</span>
+                    <div className="flex items-center gap-1">
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                      <span className="font-medium">{habit.bestStreak} days</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Total Days</span>
+                    <span className="font-medium">{habit.totalDays} days</span>
+                  </div>
+                  {habit.reminderEnabled && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Reminder</span>
+                      <div className="flex items-center gap-1">
+                        <Bell className="h-4 w-4 text-blue-500" />
+                        <span className="font-medium">{habit.reminderTime}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Add Habit Modal */}

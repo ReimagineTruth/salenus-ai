@@ -58,6 +58,8 @@ import {
   Home
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { DataService } from '@/lib/data-service';
+import type { Task as SupabaseTask, TaskNote as SupabaseTaskNote } from '@/lib/supabase';
 
 interface Task {
   id: string;
@@ -97,6 +99,7 @@ export const TaskManager: React.FC = () => {
   const { user, hasFeature, upgradePlan } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<TaskNote[]>([]);
+  const [loading, setLoading] = useState(false);
   const [newTask, setNewTask] = useState({ 
     title: '', 
     description: '', 
@@ -151,76 +154,142 @@ export const TaskManager: React.FC = () => {
     }
   }, [timerActive]);
 
-  // Load tasks from localStorage
+  // Load tasks from Supabase
   useEffect(() => {
-    const savedTasks = localStorage.getItem(`tasks_${user?.id}`);
-    const savedNotes = localStorage.getItem(`taskNotes_${user?.id}`);
-    const savedTimers = localStorage.getItem(`taskTimers_${user?.id}`);
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    }
-    if (savedNotes) {
-      setNotes(JSON.parse(savedNotes));
-    }
-    if (savedTimers) {
-      setTimers(JSON.parse(savedTimers));
+    if (user?.id) {
+      loadTasks();
     }
   }, [user?.id]);
 
-  // Save tasks to localStorage
-  useEffect(() => {
-    if (user?.id) {
-      localStorage.setItem(`tasks_${user?.id}`, JSON.stringify(tasks));
-      localStorage.setItem(`taskNotes_${user?.id}`, JSON.stringify(notes));
-      localStorage.setItem(`taskTimers_${user?.id}`, JSON.stringify(timers));
+  const loadTasks = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    try {
+      const supabaseTasks = await DataService.getTasks(user.id);
+      const transformedTasks: Task[] = supabaseTasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        completed: task.completed,
+        priority: task.priority,
+        status: task.status,
+        category: task.category,
+        dueDate: task.due_date ? new Date(task.due_date) : undefined,
+        createdAt: new Date(task.created_at),
+        completedAt: task.completed_at ? new Date(task.completed_at) : undefined,
+        estimatedTime: task.estimated_time,
+        actualTime: task.actual_time,
+        tags: task.tags,
+        attachments: task.attachments,
+        notes: task.notes,
+        assignee: task.assignee,
+        reminderTime: task.reminder_time,
+        reminderEnabled: task.reminder_enabled,
+        recurring: task.recurring,
+        subtasks: task.subtasks,
+        timeSpent: task.time_spent,
+        lastUpdated: new Date(task.last_updated)
+      }));
+      setTasks(transformedTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [tasks, notes, timers, user?.id]);
+  };
+
+  // Load notes for a specific task
+  const loadTaskNotes = async (taskId: string) => {
+    try {
+      const supabaseNotes = await DataService.getTaskNotes(taskId);
+      const transformedNotes: TaskNote[] = supabaseNotes.map(note => ({
+        id: note.id,
+        taskId: note.task_id,
+        content: note.content,
+        date: new Date(note.date),
+        type: note.type,
+        author: note.author || undefined
+      }));
+      setNotes(transformedNotes);
+    } catch (error) {
+      console.error('Error loading task notes:', error);
+    }
+  };
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const subscriptions = DataService.subscribeToUserData(user.id, {
+      onTaskChange: (payload) => {
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE' || payload.eventType === 'DELETE') {
+          loadTasks(); // Reload tasks when changes occur
+        }
+      }
+    });
+
+    return () => {
+      subscriptions.forEach(subscription => subscription.unsubscribe());
+    };
+  }, [user?.id]);
 
   // Check for overdue tasks
   useEffect(() => {
-    const checkOverdueTasks = () => {
-      const overdueTasks = tasks.filter(task => 
-        task.dueDate && new Date(task.dueDate) < new Date() && !task.completed
-      );
-      
-      overdueTasks.forEach(task => {
-        sendNotification('Task Overdue', `"${task.title}" is overdue!`);
-      });
+    const checkOverdueTasks = async () => {
+      try {
+        const overdueTasks = await DataService.checkOverdueTasks();
+        overdueTasks.forEach(task => {
+          sendNotification('Task Overdue', `"${task.title}" is overdue!`);
+        });
+      } catch (error) {
+        console.error('Error checking overdue tasks:', error);
+      }
     };
 
     checkOverdueTasks();
     const interval = setInterval(checkOverdueTasks, 300000); // Check every 5 minutes
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, []);
 
   // Handle file uploads
-  const handleFileUpload = (taskId: string, files: FileList) => {
-    const newAttachments: string[] = [];
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        newAttachments.push(e.target?.result as string);
-        setTasks(prev => prev.map(task => 
-          task.id === taskId 
-            ? { ...task, attachments: [...task.attachments, ...newAttachments] }
-            : task
-        ));
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleFileUpload = async (taskId: string, files: FileList) => {
+    try {
+      const newAttachments: string[] = [];
+      for (const file of Array.from(files)) {
+        const attachmentUrl = await DataService.uploadTaskAttachment(taskId, file);
+        if (attachmentUrl) {
+          newAttachments.push(attachmentUrl);
+        }
+      }
+      
+      if (newAttachments.length > 0) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+          await DataService.updateTask(taskId, {
+            attachments: [...task.attachments, ...newAttachments]
+          });
+          await loadTasks(); // Reload to get updated data
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
+    }
   };
 
   // Add note to task
-  const addNote = (taskId: string, content: string, type: 'note' | 'comment' | 'update' = 'note') => {
-    const note: TaskNote = {
-      id: Date.now().toString(),
-      taskId,
-      content,
-      date: new Date(),
-      type,
-      author: user?.name
-    };
-    setNotes([...notes, note]);
+  const addNote = async (taskId: string, content: string, type: 'note' | 'comment' | 'update' = 'note') => {
+    try {
+      await DataService.addTaskNote({
+        taskId,
+        content,
+        type,
+        author: user?.name
+      });
+      await loadTaskNotes(taskId);
+    } catch (error) {
+      console.error('Error adding task note:', error);
+    }
   };
 
   // Send notification
@@ -238,9 +307,8 @@ export const TaskManager: React.FC = () => {
     setNotifications(prev => [notification, ...prev.slice(0, 9)]); // Keep last 10
   };
 
-  // Request notification permission
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
+    if ('Notification' in window && Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
         sendNotification('Notifications Enabled', 'You will now receive task reminders!');
@@ -248,98 +316,108 @@ export const TaskManager: React.FC = () => {
     }
   };
 
-  // Start/stop timer for task
   const toggleTimer = (taskId: string) => {
     if (timerActive === taskId) {
       setTimerActive(null);
-      // Save time spent
-      setTasks(prev => prev.map(task => 
-        task.id === taskId 
-          ? { ...task, timeSpent: (task.timeSpent || 0) + (timers[taskId] || 0) }
-          : task
-      ));
-      setTimers(prev => {
-        const newTimers = { ...prev };
-        delete newTimers[taskId];
-        return newTimers;
-      });
+      // Update task with time spent
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        const timeSpent = timers[taskId] || 0;
+        DataService.updateTask(taskId, {
+          time_spent: (task.timeSpent || 0) + timeSpent
+        });
+      }
     } else {
       setTimerActive(taskId);
     }
   };
 
-  const addTask = () => {
-    if (!newTask.title.trim()) return;
-    
-    const task: Task = {
-      id: Date.now().toString(),
-      title: newTask.title,
-      description: newTask.description,
-      completed: false,
-      priority: newTask.priority,
-      status: newTask.status,
-      category: newTask.category,
-      dueDate: newTask.dueDate ? new Date(newTask.dueDate) : undefined,
-      createdAt: new Date(),
-      estimatedTime: newTask.estimatedTime,
-      tags: newTask.tags,
-      attachments: [],
-      notes: [],
-      assignee: user?.name,
-      reminderTime: newTask.reminderTime,
-      reminderEnabled: newTask.reminderEnabled,
-      recurring: newTask.recurring,
-      subtasks: [],
-      timeSpent: 0,
-      lastUpdated: new Date()
-    };
+  const addTask = async () => {
+    if (!user?.id || !newTask.title.trim()) return;
 
-    setTasks([...tasks, task]);
-    setNewTask({ 
-      title: '', 
-      description: '', 
-      priority: 'Medium',
-      status: 'Todo',
-      category: 'Work',
-      dueDate: '',
-      estimatedTime: 30,
-      tags: [],
-      reminderTime: '09:00',
-      reminderEnabled: true,
-      recurring: 'None'
-    });
-    setShowAddForm(false);
-    
-    sendNotification('Task Created', `"${task.title}" has been added to your tasks!`);
-  };
+    try {
+      setLoading(true);
+      const task = await DataService.createTask({
+        userId: user.id,
+        title: newTask.title,
+        description: newTask.description,
+        priority: newTask.priority,
+        status: newTask.status,
+        category: newTask.category,
+        dueDate: newTask.dueDate,
+        estimatedTime: newTask.estimatedTime,
+        tags: newTask.tags,
+        reminderTime: newTask.reminderTime,
+        reminderEnabled: newTask.reminderEnabled,
+        recurring: newTask.recurring
+      });
 
-  const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        const completed = !task.completed;
-        return {
-          ...task,
-          completed,
-          completedAt: completed ? new Date() : undefined,
-          status: completed ? 'Done' : 'Todo',
-          lastUpdated: new Date()
-        };
+      if (task) {
+        setNewTask({ 
+          title: '', 
+          description: '', 
+          priority: 'Medium',
+          status: 'Todo',
+          category: 'Work',
+          dueDate: '',
+          estimatedTime: 30,
+          tags: [],
+          reminderTime: '09:00',
+          reminderEnabled: true,
+          recurring: 'None'
+        });
+        setShowAddForm(false);
+        await loadTasks(); // Reload tasks
+        sendNotification('Task Created', `${newTask.title} has been added to your tasks!`);
       }
-      return task;
-    }));
+    } catch (error) {
+      console.error('Error creating task:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateTaskStatus = (taskId: string, status: Task['status']) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, status, lastUpdated: new Date() }
-        : task
-    ));
+  const toggleTask = async (taskId: string) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const completed = !task.completed;
+      const updatedTask = await DataService.toggleTaskCompletion(taskId, completed);
+      
+      if (updatedTask) {
+        await loadTasks(); // Reload tasks to get updated data
+        
+        if (completed) {
+          sendNotification('Task Completed!', `Great job completing "${task.title}"! ✅`);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling task:', error);
+    }
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-    setNotes(notes.filter(note => note.taskId !== taskId));
+  const updateTaskStatus = async (taskId: string, status: Task['status']) => {
+    try {
+      await DataService.updateTask(taskId, { status });
+      await loadTasks(); // Reload tasks
+    } catch (error) {
+      console.error('Error updating task status:', error);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+
+    try {
+      const success = await DataService.deleteTask(taskId);
+      if (success) {
+        await loadTasks(); // Reload tasks
+        sendNotification('Task Deleted', 'Task has been removed from your list.');
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   const filteredTasks = tasks.filter(task => {
