@@ -660,6 +660,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                     size="sm" 
                     variant="outline"
                     className="text-sm border-gray-300 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-300 hover:scale-105" 
+                    onClick={() => { setSelectedDemoPlan('Basic'); setShowDemoDashboard(true); }}
                   >
                     <User className="h-4 w-4 mr-2" />
                     Demo
@@ -799,6 +800,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                       <Button 
                         variant="outline"
                         className="w-full border-gray-300 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-300 py-4 text-base font-semibold" 
+                        onClick={() => { setSelectedDemoPlan('Basic'); setShowDemoDashboard(true); }}
                       >
                         <User className="h-5 w-5 mr-3" />
                         Try Demo
@@ -1817,27 +1819,55 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
 
       {/* Demo Dashboard Modal */}
       <Dialog open={showDemoDashboard} onOpenChange={setShowDemoDashboard}>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden p-0">
-          <DialogHeader className="p-6 pb-0">
-            <div className="flex items-center justify-between">
+        <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0">
+          <DialogHeader className="p-4 sm:p-6 pb-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <DialogTitle className="text-2xl font-bold">
+                <DialogTitle className="text-xl sm:text-2xl font-bold">
                   {selectedDemoPlan} Plan Dashboard Demo
                 </DialogTitle>
-                <p className="text-gray-600">
+                <p className="text-gray-600 text-sm sm:text-base">
                   Interactive preview of your Salenus A.I dashboard
                 </p>
               </div>
-              <Button 
-                onClick={() => setShowPlanSelection(true)}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                Get Started
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button 
+                  onClick={handleOpenHabitTracker}
+                  className="bg-violet-600 hover:bg-violet-700 text-white text-sm"
+                >
+                  Try Free Demo Tracker
+                </Button>
+                <Button 
+                  onClick={() => setShowPlanSelection(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-sm"
+                >
+                  Get Started
+                </Button>
+              </div>
             </div>
           </DialogHeader>
-          
-          <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
+
+          {/* Showcase All Demos Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
+            {['Basic', 'Pro', 'Premium'].map((plan) => (
+              <div key={plan} className="bg-white rounded-xl shadow-lg p-4:p-6 flex flex-col items-center">
+                <h3 className={`text-lg sm:text-xl font-bold mb-2 text-center ${plan === 'Basic' ? 'text-blue-600' : plan === 'Pro' ? 'text-indigo-600' : 'text-purple-600'}`}>{plan} Plan</h3>
+                <p className="text-gray-600 mb-4 text-center text-sm sm:text-base">
+                  {plan === 'Basic' && 'Essential habit tracking, task management, and community challenges.'}
+                  {plan === 'Pro' && 'Unlock mood tracking, smart reminders, and advanced goals.'}
+                  {plan === 'Premium' && 'AI coaching, advanced analytics, and exclusive features.'}
+                </p>
+                <Button
+                  className={`w-full text-sm ${plan === 'Basic' ? 'bg-blue-600 hover:bg-blue-700' : plan === 'Pro' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'} text-white`}
+                  onClick={() => handleShowDemo(plan)}
+                >
+                  View Demo
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="overflow-y-auto max-h-[calc(95vh-300)] px-4 sm:px-6 pb-6">
             <DemoDashboard 
               plan={selectedDemoPlan} 
               onUpgrade={() => {

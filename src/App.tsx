@@ -20,7 +20,7 @@ import { toast } from '@/hooks/use-toast';
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [currentStep, setCurrentStep] = useState<'splash' | 'login' | 'landing' | 'payment' | 'dashboard'>('splash');
+  const [currentStep, setCurrentStep] = useState<'splash' | 'login' | 'plan' | 'landing' | 'payment' | 'dashboard'>('splash');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('Free');
   const [pricingToggle, setPricingToggle] = useState('monthly');
@@ -42,9 +42,9 @@ const App = () => {
         setSelectedPlan(user.plan);
         setCurrentStep('dashboard');
       } else if (authUser && !user) {
-        // User is authenticated but no app data yet - wait for loadUserData
-        console.log('User authenticated but no app data, staying on splash');
-        setCurrentStep('splash');
+        // User is authenticated but no app data yet - go to landing page instead of staying on splash
+        console.log('User authenticated but no app data, going to landing page');
+        setCurrentStep('landing');
       } else {
         // No authenticated user
         console.log('No authenticated user, going to login');
@@ -56,10 +56,10 @@ const App = () => {
 
     // Add a timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      console.log('Initialization timeout reached, forcing to login');
+      console.log('Initialization timeout reached, forcing to landing page');
       setIsLoading(false);
-      setCurrentStep('login');
-    }, 5000); // 5 second timeout
+      setCurrentStep('landing');
+    }, 3000); // 3 second timeout
 
     // Simulate splash screen for 2 seconds, then initialize
     const timer = setTimeout(() => {
@@ -94,9 +94,9 @@ const App = () => {
       // Use Supabase register
       const authUser = await register(userData.email, userData.password, userData.name);
       if (authUser) {
-        // New users go to landing page
-        console.log('New user signed up, going to landing page');
-        setCurrentStep('dashboard');
+        // After signup, go to plan selection
+        console.log('New user signed up, going to plan selection');
+        setCurrentStep('plan');
       }
     } catch (error) {
       console.error('Signup error:', error);
@@ -107,7 +107,11 @@ const App = () => {
   const handleChoosePlan = (plan: string, billing: string = 'monthly') => {
     setSelectedPlan(plan);
     setPricingToggle(billing);
-    setCurrentStep('payment');
+    if (plan === 'Free') {
+      setCurrentStep('dashboard');
+    } else {
+      setCurrentStep('payment');
+    }
   };
 
   const handlePaymentComplete = async () => {
@@ -198,6 +202,27 @@ const App = () => {
               hasPaid={user?.hasPaid || false}
               onChoosePlan={(plan, billing) => handleChoosePlan(plan, billing)}
               onLogout={handleLogout}
+            />
+          </BrowserRouter>
+        </>
+      );
+    }
+
+    // Show plan selection after signup
+    if (currentStep === 'plan') {
+      return (
+        <>
+          <SEO title="Choose Your Plan — Salenus AI" description="Select your plan to get started with Salenus AI." />
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Index 
+              user={user} 
+              selectedPlan={selectedPlan}
+              hasPaid={user?.hasPaid || false}
+              onChoosePlan={handleChoosePlan}
+              onLogout={handleLogout}
+              forceShowPlanSelection={true}
             />
           </BrowserRouter>
         </>
