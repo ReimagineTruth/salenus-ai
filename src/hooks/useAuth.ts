@@ -50,24 +50,36 @@ export const useAuth = () => {
 
   const loadUserData = async (authUserId: string) => {
     try {
+      console.log('Loading user data for authUserId:', authUserId);
+      
       // Check if user exists in our database
       let appUser = await SupabaseService.getUser(authUserId);
+      console.log('Retrieved user from database:', appUser);
       
       if (!appUser) {
+        console.log('User not found in database, creating new user...');
         // Create new user if they don't exist
         const authUser = await supabase.auth.getUser();
         if (authUser.data.user) {
+          console.log('Creating new user with data:', {
+            email: authUser.data.user.email,
+            name: authUser.data.user.user_metadata?.full_name || authUser.data.user.email!.split('@')[0],
+            plan: 'Free',
+            authUserId: authUserId
+          });
+          
           appUser = await SupabaseService.createUser({
             email: authUser.data.user.email!,
             name: authUser.data.user.user_metadata?.full_name || authUser.data.user.email!.split('@')[0],
             plan: 'Free',
             authUserId: authUserId
           });
+          console.log('Created new user:', appUser);
         }
       }
 
       if (appUser) {
-        setUser({
+        const userData = {
           id: appUser.id,
           email: appUser.email,
           name: appUser.name,
@@ -77,7 +89,12 @@ export const useAuth = () => {
           createdAt: appUser.created_at,
           hasPaid: appUser.has_paid,
           avatarUrl: appUser.avatar_url || undefined
-        });
+        };
+        
+        console.log('Setting user state with data:', userData);
+        setUser(userData);
+      } else {
+        console.error('Failed to load or create user data');
       }
     } catch (error) {
       console.error('Error loading user data:', error);

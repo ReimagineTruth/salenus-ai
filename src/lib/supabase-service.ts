@@ -19,10 +19,10 @@ export class SupabaseService {
     const { data, error } = await supabase
       .from('users')
       .insert({
+        id: userData.authUserId, // Use authUserId as the primary key
         email: userData.email,
         name: userData.name,
         plan: userData.plan || 'Free',
-        auth_user_id: userData.authUserId,
         has_paid: false,
         is_active: true
       })

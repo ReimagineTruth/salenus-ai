@@ -25,7 +25,7 @@ const App = () => {
   const [selectedPlan, setSelectedPlan] = useState('Free');
   const [pricingToggle, setPricingToggle] = useState('monthly');
   
-  // Use the Supabase auth hook - ALWAYS call this
+  // Use the Supabase auth hook
   const { user, authUser, isLoading: authLoading, login, register, logout, upgradePlan } = useAuth();
 
   // Initialize app and check for existing user
@@ -79,8 +79,7 @@ const App = () => {
       // Use Supabase login
       const authUser = await login(userData.email, userData.password);
       if (authUser) {
-        // Existing users go directly to dashboard
-        console.log('Existing user logged in, going to dashboard');
+        // The useAuth hook will handle loading user data
         setCurrentStep('dashboard');
       }
     } catch (error) {
@@ -94,8 +93,7 @@ const App = () => {
       // Use Supabase register
       const authUser = await register(userData.email, userData.password, userData.name);
       if (authUser) {
-        // New users go to landing page
-        console.log('New user signed up, going to landing page');
+        // The useAuth hook will handle loading user data
         setCurrentStep('dashboard');
       }
     } catch (error) {
@@ -158,36 +156,101 @@ const App = () => {
     return pricing[plan]?.[billing] || '5 Pi';
   };
 
-  // Render the appropriate component based on current step
-  const renderContent = () => {
-    // Show splash screen during initial load
-    if (isLoading || authLoading || currentStep === 'splash') {
-      return (
-        <>
-          <SEO title="Salenus AI — Loading..." description="Loading your Pi-powered AI coaching experience..." />
-          <SplashScreen />
-        </>
-      );
-    }
+  // Show splash screen during initial load
+  if (isLoading || authLoading || currentStep === 'splash') {
+    // Add a fallback to prevent infinite splash screen
+    useEffect(() => {
+      const fallbackTimer = setTimeout(() => {
+        console.log('Splash screen timeout, forcing to login');
+        setIsLoading(false);
+        setCurrentStep('login');
+      }, 3000); // Reduced to 3 seconds
 
-    // Show login page
-    if (currentStep === 'login') {
-      return (
-        <>
+      return () => clearTimeout(fallbackTimer);
+    }, []);
+
+    return (
+      <>
+        <SEO title="Salenus AI — Loading..." description="Loading your Pi-powered AI coaching experience..." />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-teal-100 flex items-center justify-center p-4">
+          <div className="text-center">
+            {/* Logo */}
+            <div className="flex justify-center mb-8">
+              <img src="/logo.png" alt="Salenus A.I Logo" className="w-20 h-20 rounded-full" />
+            </div>
+
+            {/* App Name */}
+            <h1 className="text-3xl font-bold text-indigo-700 mb-2">
+              Salenus A.I Personal Coach
+            </h1>
+
+            {/* Tagline */}
+            <p className="text-lg text-indigo-600 mb-2 font-medium">
+              The first Pi-powered AI coach
+            </p>
+
+            {/* Organization */}
+            <p className="text-sm text-gray-600 mb-8">
+              by mrwain organization
+            </p>
+
+            {/* Loading Progress */}
+            <div className="mb-8">
+              <div className="flex justify-between text-sm text-gray-600 mb-2">
+                <span>Loading...</span>
+                <span>100%</span>
+              </div>
+              <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden mx-auto">
+                <div 
+                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: '100%' }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Skip Loading Button */}
+            <button 
+              onClick={() => {
+                console.log('User clicked skip loading');
+                setIsLoading(false);
+                setCurrentStep('login');
+              }}
+              className="mb-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              Continue to App
+            </button>
+
+            {/* Support */}
+            <p className="text-xs text-gray-500">
+              Need help? <a href="mailto:support@salenus.ai" className="text-blue-500 underline">support@salenus.ai</a>
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show login page
+  if (currentStep === 'login') {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
           <SEO title="Sign In — Salenus AI" description="Sign in to your Salenus AI account and access your Pi-powered AI coaching dashboard." />
           <Toaster />
           <Sonner />
           <BrowserRouter>
             <LoginPage onLogin={handleLogin} onSignup={handleSignup} />
           </BrowserRouter>
-        </>
-      );
-    }
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
 
-    // Show landing page (free account)
-    if (currentStep === 'landing') {
-      return (
-        <>
+  // Show landing page (free account)
+  if (currentStep === 'landing') {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
           <SEO config="home" />
           <Toaster />
           <Sonner />
@@ -200,17 +263,19 @@ const App = () => {
               onLogout={handleLogout}
             />
           </BrowserRouter>
-        </>
-      );
-    }
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
 
-    // Show payment page
-    if (currentStep === 'payment') {
-      const planPrice = getPlanPrice(selectedPlan, pricingToggle);
-      const billingText = pricingToggle === 'monthly' ? 'month' : 'year';
-      
-      return (
-        <>
+  // Show payment page
+  if (currentStep === 'payment') {
+    const planPrice = getPlanPrice(selectedPlan, pricingToggle);
+    const billingText = pricingToggle === 'monthly' ? 'month' : 'year';
+    
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
           <SEO 
             title={`Payment — ${selectedPlan} Plan — Salenus AI`}
             description={`Complete your payment for the ${selectedPlan} plan. Upgrade to unlock advanced AI coaching features and boost your productivity.`}
@@ -313,14 +378,16 @@ const App = () => {
               </div>
             </div>
           </BrowserRouter>
-        </>
-      );
-    }
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
 
-    // Show dashboard (for all logged-in users)
-    if (currentStep === 'dashboard' && user) {
-      return (
-        <>
+  // Show dashboard (for all logged-in users)
+  if (currentStep === 'dashboard' && user) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
           <SEO config="dashboard" />
           <Toaster />
           <Sonner />
@@ -334,19 +401,21 @@ const App = () => {
               }}
             />
           </BrowserRouter>
-        </>
-      );
-    }
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+  }
 
-    // Redirect non-logged users to login
-    if (currentStep === 'dashboard' && !user) {
-      setCurrentStep('login');
-      return null;
-    }
+  // Redirect non-logged users to login
+  if (currentStep === 'dashboard' && !user) {
+    setCurrentStep('login');
+    return null;
+  }
 
-    // Default routing for other pages
-    return (
-      <>
+  // Default routing for other pages
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
         <SEO config="home" />
         <Toaster />
         <Sonner />
@@ -420,18 +489,9 @@ const App = () => {
             />
           </Routes>
         </BrowserRouter>
-      </>
-    );
-  };
-
-  // Always return the same structure - this prevents the hooks error
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        {renderContent()}
       </TooltipProvider>
     </QueryClientProvider>
   );
 };
 
-export default App; 
+export default App;

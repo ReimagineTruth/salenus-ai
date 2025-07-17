@@ -200,21 +200,21 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
 
   const handleSwipeAction = (direction: 'left' | 'right') => {
     if (direction === 'left') {
-      // Quick action (e.g., mark complete)
-      console.log('Swipe left action');
+      // Swipe left - open drawer
+      setDrawerOpen(true);
     } else {
-      // Navigation action
-      console.log('Swipe right action');
+      // Swipe right - close drawer
+      setDrawerOpen(false);
     }
   };
 
-  // Desktop-specific handlers
+  // Keyboard shortcuts
   const handleKeyboardShortcuts = (event: KeyboardEvent) => {
     if (event.ctrlKey || event.metaKey) {
       switch (event.key) {
         case 'k':
           event.preventDefault();
-          setShowSearch(true);
+          setShowSearch(!showSearch);
           break;
         case 'b':
           event.preventDefault();
@@ -222,66 +222,32 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
           break;
         case 'h':
           event.preventDefault();
-          navigate('habits');
+          navigate('/dashboard');
           break;
-        case 't':
+        case 's':
           event.preventDefault();
-          navigate('tasks');
+          setShowSettings(!showSettings);
           break;
-        case 'm':
+        case '1':
           event.preventDefault();
-          navigate('mood');
+          setActiveTab('overview');
           break;
-        case '?':
+        case '2':
           event.preventDefault();
-          setShowKeyboardShortcuts(true);
+          setActiveTab('features');
+          break;
+        case '3':
+          event.preventDefault();
+          setShowSettings(true);
           break;
       }
     }
   };
 
   React.useEffect(() => {
-    if (!isMobile) {
-      document.addEventListener('keydown', handleKeyboardShortcuts);
-      return () => document.removeEventListener('keydown', handleKeyboardShortcuts);
-    }
-  }, [isMobile, drawerOpen]);
-
-  // If expired, force payment modal for renewal (only for paid plans)
-  React.useEffect(() => {
-    if (isExpired && user.plan !== 'Free') {
-      setSelectedPlan(user.plan);
-      setPaymentOpen(true);
-    }
-  }, [isExpired, user?.plan]);
-
-  // Block dashboard if expired and payment modal is open
-  if (isExpired && paymentOpen) {
-    return (
-      <PaymentModal
-        isOpen={paymentOpen}
-        plan={selectedPlan as UserPlan}
-        onPay={handlePay}
-        onChangePlan={handleChangePlan}
-        isLoading={featureLoading}
-      />
-    );
-  }
-
-  if (!user) return null;
-
-  // Ensure user has a valid plan
-  if (!user.plan) {
-    console.error('User has no plan assigned');
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Account Error</h2>
-          <p className="text-gray-600">Your account plan information is missing. Please contact support.</p>
-        </div>
-      </div>
-    );
-  }
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    return () => document.removeEventListener('keydown', handleKeyboardShortcuts);
+  }, [drawerOpen, showSearch, showSettings]);
 
   const handleSignOut = () => {
     if (onLogout) {
@@ -289,12 +255,20 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     }
   };
 
-  // Check if user has access to a specific plan level
+  // Check if user has access to a specific plan level using hasFeature
   const hasPlanAccess = (requiredPlan: string) => {
-    const planHierarchy = { 'Free': 0, 'Basic': 1, 'Pro': 2, 'Premium': 3 };
-    const userPlanLevel = planHierarchy[user.plan] || 0;
-    const requiredPlanLevel = planHierarchy[requiredPlan] || 0;
-    return userPlanLevel >= requiredPlanLevel;
+    // Map plan names to feature keys
+    const planFeatureMap = {
+      'Free': 'habit_tracking', // Free users have access to basic habit tracking
+      'Basic': 'community_challenges', // Basic users have access to community challenges
+      'Pro': 'mood_tracking', // Pro users have access to mood tracking
+      'Premium': 'ai_coaching' // Premium users have access to AI coaching
+    };
+    
+    const featureKey = planFeatureMap[requiredPlan as keyof typeof planFeatureMap];
+    if (!featureKey) return false;
+    
+    return hasFeature(featureKey);
   };
 
   // For upgrades, call onUpgrade from parent (Index.tsx)
@@ -319,42 +293,68 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     setActiveFeature(route);
     setActiveTab('overview'); // Switch to overview tab when navigating to a feature
     
-    // Check if feature is locked for current user plan
-    const featureAccess = {
-      'free-preview': 'Free',
-      'pi-network': 'Free',
-      'habits': 'Basic',
-      'tasks': 'Basic',
-      'challenges': 'Basic',
-      'sync': 'Basic',
-      'mobile': 'Basic',
-      'notifications': 'Basic',
-      'mood': 'Pro',
-      'goals': 'Pro',
-      'journal': 'Pro',
-      'photos': 'Pro',
-      'custom-challenges': 'Pro',
-      'streak-protection': 'Pro',
-      'smart-reminders': 'Pro',
-      'support': 'Pro',
-      'ai-coach': 'Premium',
-      'analytics': 'Premium',
-      'calendar': 'Premium',
-      'vip-support': 'Premium',
-      'exclusive': 'Premium',
-      'courses': 'Premium',
-      'api': 'Premium',
-      'white-label': 'Premium'
+    // Map routes to feature keys for access checking
+    const routeFeatureMap = {
+      'free-preview': 'habit_tracking',
+      'pi-network': 'habit_tracking',
+      'habits': 'habit_tracking',
+      'tasks': 'task_management',
+      'challenges': 'community_challenges',
+      'sync': 'cross_platform_sync',
+      'mobile': 'mobile_app',
+      'notifications': 'basic_notifications',
+      'mood': 'mood_tracking',
+      'goals': 'advanced_goals',
+      'journal': 'habit_journal',
+      'photos': 'progress_photos',
+      'custom-challenges': 'custom_challenges',
+      'streak-protection': 'streak_protection',
+      'smart-reminders': 'smart_reminders',
+      'support': 'priority_support',
+      'ai-coach': 'ai_coaching',
+      'analytics': 'advanced_analytics',
+      'calendar': 'calendar_integration',
+      'vip-support': 'vip_support',
+      'exclusive': 'exclusive_features',
+      'courses': 'personalized_courses',
+      'api': 'api_access',
+      'white-label': 'white_label'
     };
 
-    const requiredPlan = featureAccess[route as keyof typeof featureAccess] as UserPlan;
-    const userPlanLevel = { 'Free': 0, 'Basic': 1, 'Pro': 2, 'Premium': 3 };
-    const currentUserLevel = userPlanLevel[user?.plan || 'Free'];
-    const requiredLevel = userPlanLevel[requiredPlan];
-
-    if (currentUserLevel < requiredLevel) {
+    const featureKey = routeFeatureMap[route as keyof typeof routeFeatureMap];
+    
+    if (featureKey && !hasFeature(featureKey)) {
       // Feature is locked - show locked feature view
       setIsFeatureLocked(true);
+      
+      // Determine required plan based on feature
+      const featurePlanMap = {
+        'habit_tracking': 'Free',
+        'task_management': 'Free',
+        'basic_notifications': 'Free',
+        'community_challenges': 'Basic',
+        'cross_platform_sync': 'Basic',
+        'mobile_app': 'Basic',
+        'mood_tracking': 'Pro',
+        'smart_reminders': 'Pro',
+        'advanced_goals': 'Pro',
+        'progress_photos': 'Pro',
+        'custom_challenges': 'Pro',
+        'habit_journal': 'Pro',
+        'streak_protection': 'Pro',
+        'priority_support': 'Pro',
+        'ai_coaching': 'Premium',
+        'advanced_analytics': 'Premium',
+        'calendar_integration': 'Premium',
+        'personalized_courses': 'Premium',
+        'api_access': 'Premium',
+        'white_label': 'Premium',
+        'vip_support': 'Premium',
+        'exclusive_features': 'Premium'
+      };
+      
+      const requiredPlan = featurePlanMap[featureKey as keyof typeof featurePlanMap] as UserPlan;
+      
       setLockedFeatureInfo({
         name: featureName,
         description: getFeatureDescription(featureName),
