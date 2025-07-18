@@ -448,7 +448,7 @@ const MobileSidebar: React.FC<{
               >
                 <Icon className="h-5 w-5" />
                 <span className="flex-1 text-left">{item.label}</span>
-                {!hasAccess && <Lock className="h-4 w-4" />}
+                {!hasAccess && <Key className="h-4 w-4" />}
               </button>
             );
           })}

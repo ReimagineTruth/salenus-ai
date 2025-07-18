@@ -17,10 +17,10 @@ import {
   Calendar, 
   BarChart3, 
   Target,
-  Lock,
+  Key,
   ArrowUp,
   TrendingUp,
-  Clock,
+  CKey,
   Award,
   Zap,
   List,
@@ -41,7 +41,10 @@ import {
   Activity,
   Target as TargetIcon,
   Users,
-  DollarSign
+  DollarSign,
+  Archive,
+  Copy,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { DataService } from '@/lib/data-service';
@@ -70,6 +73,8 @@ interface Habit {
   priority: 'Low' | 'Medium' | 'High';
   tags: string[];
   milestones: { id: string; title: string; target: number; achieved: boolean; date?: Date }[];
+  archived: boolean;
+  archived_at: string | null;
 }
 
 interface HabitNote {
@@ -103,8 +108,21 @@ export const HabitTracker: React.FC = () => {
   const [showHabitDetails, setShowHabitDetails] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notifications, setNotifications] = useState<{id: string, title: string, message: string, time: Date}[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    category: 'Health',
+    difficulty: 'Medium' as const,
+    priority: 'Medium' as const,
+    goal: 1,
+    reminderTime: '09:00',
+    reminderEnabled: true,
+    tags: [] as string[]
+  });
 
-  const categories = ['All', 'Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Social', 'Finance'];
+  const categories = ['All', 'Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Social', 'Finance', 'Archived'];
   const difficulties = ['Easy', 'Medium', 'Hard'];
   const priorities = ['Low', 'Medium', 'High'];
 
@@ -151,7 +169,9 @@ export const HabitTracker: React.FC = () => {
         difficulty: habit.difficulty,
         priority: habit.priority,
         tags: habit.tags,
-        milestones: habit.milestones
+        milestones: habit.milestones,
+        archived: habit.archived,
+        archived_at: habit.archived_at
       }));
       setHabits(transformedHabits);
     } catch (error) {
@@ -336,6 +356,275 @@ export const HabitTracker: React.FC = () => {
     }
   };
 
+  // Edit habit functionality
+  const editHabit = async (habitId: string, updates: Partial<Habit>) => {
+    try {
+      const success = await DataService.updateHabit(habitId, updates);
+      if (success) {
+        await loadHabits(); // Reload habits
+        sendNotification('Habit Updated', 'Habit has been updated successfully.');
+      }
+    } catch (error) {
+      console.error('Error updating habit:', error);
+    }
+  };
+
+  // Open edit modal
+  const openEditModal = (habit: Habit) => {
+    setEditingHabit(habit);
+    setEditForm({
+      name: habit.name,
+      description: habit.description,
+      category: habit.category,
+      difficulty: habit.difficulty,
+      priority: habit.priority,
+      goal: habit.goal,
+      reminderTime: habit.reminderTime || '09:00',
+      reminderEnabled: habit.reminderEnabled,
+      tags: habit.tags || []
+    });
+    setShowEditModal(true);
+  };
+
+  // Save edited habit
+  const saveEditedHabit = async () => {
+    if (!editingHabit) return;
+
+    try {
+      const updates = {
+        name: editForm.name,
+        description: editForm.description,
+        category: editForm.category,
+        difficulty: editForm.difficulty,
+        priority: editForm.priority,
+        goal: editForm.goal,
+        reminder_time: editForm.reminderTime,
+        reminder_enabled: editForm.reminderEnabled,
+        tags: editForm.tags
+      };
+
+      const success = await DataService.updateHabit(editingHabit.id, updates);
+      if (success) {
+        await loadHabits(); // Reload habits
+        setShowEditModal(false);
+        setEditingHabit(null);
+        sendNotification('Habit Updated', 'Habit has been updated successfully.');
+      }
+    } catch (error) {
+      console.error('Error updating habit:', error);
+    }
+  };
+
+  // Add tag to habit
+  const addTag = (tag: string) => {
+    if (tag && !editForm.tags.includes(tag)) {
+      setEditForm(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag]
+      }));
+    }
+  };
+
+  // Remove tag from habit
+  const removeTag = (tagToRemove: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  // Restart habit data (reset streak and progress)
+  const restartHabitData = async (habitId: string) => {
+    if (!confirm('Are you sure you want to restart this habit? This will reset all progress and streak data.')) return;
+
+    try {
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      const updates = {
+        streak: 0,
+        total_days: 0,
+        completed_today: false,
+        best_streak: 0,
+        weekly_progress: new Array(7).fill(0),
+        monthly_progress: new Array(31).fill(0),
+        yearly_progress: new Array(365).fill(0),
+        last_completed: null,
+        notes: [],
+        images: []
+      };
+
+      const success = await DataService.updateHabit(habitId, updates);
+      if (success) {
+        await loadHabits(); // Reload habits
+        sendNotification('Habit Restarted', 'Habit data has been reset successfully.');
+      }
+    } catch (error) {
+      console.error('Error restarting habit:', error);
+    }
+  };
+
+  // Export habit data
+  const exportHabitData = async (habitId?: string) => {
+    try {
+      const dataToExport = habitId 
+        ? habits.filter(h => h.id === habitId)
+        : habits;
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        user: user?.email,
+        habits: dataToExport.map(habit => ({
+          id: habit.id,
+          name: habit.name,
+          description: habit.description,
+          category: habit.category,
+          difficulty: habit.difficulty,
+          priority: habit.priority,
+          goal: habit.goal,
+          streak: habit.streak,
+          bestStreak: habit.bestStreak,
+          totalDays: habit.totalDays,
+          completionRate: habit.totalDays > 0 ? (habit.streak / habit.totalDays) * 100 : 0,
+          createdAt: habit.createdAt,
+          lastCompleted: habit.lastCompleted,
+          weeklyProgress: habit.weeklyProgress,
+          monthlyProgress: habit.monthlyProgress,
+          yearlyProgress: habit.yearlyProgress,
+          notes: habit.notes,
+          images: habit.images,
+          tags: habit.tags,
+          milestones: habit.milestones
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `habit-data-${habitId || 'all'}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      sendNotification('Data Exported', 'Habit data has been exported successfully.');
+    } catch (error) {
+      console.error('Error exporting habit data:', error);
+    }
+  };
+
+  // Import habit data
+  const importHabitData = async (file: File) => {
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+      
+      if (importedData.habits && Array.isArray(importedData.habits)) {
+        // Process imported habits
+        for (const importedHabit of importedData.habits) {
+          const habitData = {
+            userId: user!.id,
+            name: importedHabit.name,
+            description: importedHabit.description || '',
+            goal: importedHabit.goal || 1,
+            category: importedHabit.category || 'Health',
+            difficulty: importedHabit.difficulty || 'Medium',
+            priority: importedHabit.priority || 'Medium',
+            reminderTime: importedHabit.reminderTime || '09:00',
+            reminderEnabled: importedHabit.reminderEnabled !== false
+          };
+
+          await DataService.createHabit(habitData);
+        }
+
+        await loadHabits(); // Reload habits
+        sendNotification('Data Imported', `${importedData.habits.length} habits have been imported successfully.`);
+      }
+    } catch (error) {
+      console.error('Error importing habit data:', error);
+      sendNotification('Import Error', 'Failed to import habit data. Please check the file format.');
+    }
+  };
+
+  // Clear all habit data
+  const clearAllHabitData = async () => {
+    if (!confirm('Are you sure you want to clear ALL habit data? This action cannot be undone.')) return;
+
+    try {
+      for (const habit of habits) {
+        await DataService.deleteHabit(habit.id);
+      }
+      
+      setHabits([]);
+      sendNotification('Data Cleared', 'All habit data has been cleared successfully.');
+    } catch (error) {
+      console.error('Error clearing habit data:', error);
+    }
+  };
+
+  // Duplicate habit
+  const duplicateHabit = async (habitId: string) => {
+    try {
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      const habitData = {
+        userId: user!.id,
+        name: `${habit.name} (Copy)`,
+        description: habit.description,
+        goal: habit.goal,
+        category: habit.category,
+        difficulty: habit.difficulty,
+        priority: habit.priority,
+        reminderTime: habit.reminderTime || '09:00',
+        reminderEnabled: habit.reminderEnabled
+      };
+
+      await DataService.createHabit(habitData);
+      await loadHabits(); // Reload habits
+      sendNotification('Habit Duplicated', 'Habit has been duplicated successfully.');
+    } catch (error) {
+      console.error('Error duplicating habit:', error);
+    }
+  };
+
+  // Archive habit (soft delete)
+  const archiveHabit = async (habitId: string) => {
+    try {
+      const updates = {
+        archived: true,
+        archived_at: new Date().toISOString()
+      };
+
+      const success = await DataService.updateHabit(habitId, updates);
+      if (success) {
+        await loadHabits(); // Reload habits
+        sendNotification('Habit Archived', 'Habit has been archived successfully.');
+      }
+    } catch (error) {
+      console.error('Error archiving habit:', error);
+    }
+  };
+
+  // Restore archived habit
+  const restoreHabit = async (habitId: string) => {
+    try {
+      const updates = {
+        archived: false,
+        archived_at: null
+      };
+
+      const success = await DataService.updateHabit(habitId, updates);
+      if (success) {
+        await loadHabits(); // Reload habits
+        sendNotification('Habit Restored', 'Habit has been restored successfully.');
+      }
+    } catch (error) {
+      console.error('Error restoring habit:', error);
+    }
+  };
+
   const filteredHabits = habits.filter(habit => 
     selectedCategory === 'All' || habit.category === selectedCategory
   );
@@ -404,9 +693,9 @@ export const HabitTracker: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mobile-safe-area">
       {/* Header with real-time clock */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Habit Tracker</h2>
           <p className="text-slate-600">Build lasting habits and track your progress</p>
@@ -414,11 +703,11 @@ export const HabitTracker: React.FC = () => {
             {currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString()}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full md:w-auto">
           <Badge className={user.plan === 'Premium' ? 'bg-purple-600' : user.plan === 'Pro' ? 'bg-indigo-600' : 'bg-blue-600'}>
             {user.plan} Plan
           </Badge>
-          <Button onClick={requestNotificationPermission} variant="outline" size="sm">
+          <Button onClick={requestNotificationPermission} variant="outline" size="sm" className="w-full sm:w-auto">
             <Bell className="h-4 w-4 mr-2" />
             Enable Notifications
           </Button>
@@ -426,7 +715,7 @@ export const HabitTracker: React.FC = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -474,10 +763,10 @@ export const HabitTracker: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full md:w-auto">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full md:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -503,14 +792,89 @@ export const HabitTracker: React.FC = () => {
             </Button>
           </div>
         </div>
-        <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Habit
-        </Button>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 w-full md:w-auto">
+            <Plus className="h-4 w-4" />
+            Add Habit
+          </Button>
+        </div>
       </div>
 
+      {/* Data Management Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Data Management
+          </CardTitle>
+          <CardDescription>Manage your habit data with comprehensive CRUD operations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Export Data */}
+            <div className="space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => exportHabitData()}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export All Data
+              </Button>
+              <p className="text-xs text-gray-500">Export all habits as JSON</p>
+            </div>
+
+            {/* Import Data */}
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept=".json"
+                onChange={(e) => e.target.files?.[0] && importHabitData(e.target.files[0])}
+                className="hidden"
+                id="import-habits"
+              />
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => document.getElementById('import-habits')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import Data
+              </Button>
+              <p className="text-xs text-gray-500">Import habits from JSON file</p>
+            </div>
+
+            {/* Clear All Data */}
+            <div className="space-y-2">
+              <Button 
+                variant="destructive" 
+                className="w-full" 
+                onClick={clearAllHabitData}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All Data
+              </Button>
+              <p className="text-xs text-gray-500">Delete all habits permanently</p>
+            </div>
+
+            {/* Archive Management */}
+            <div className="space-y-2">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => setSelectedCategory(selectedCategory === 'Archived' ? 'All' : 'Archived')}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                {selectedCategory === 'Archived' ? 'Show Active' : 'Show Archived'}
+              </Button>
+              <p className="text-xs text-gray-500">Manage archived habits</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Habits Grid/List */}
-      <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
+      <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
         {loading ? (
           <p>Loading habits...</p>
         ) : filteredHabits.length === 0 ? (
@@ -590,6 +954,89 @@ export const HabitTracker: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Comprehensive Action Buttons */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Primary Actions */}
+                    <div className="space-y-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => openEditModal(habit)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => duplicateHabit(habit.id)}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Duplicate
+                      </Button>
+                    </div>
+
+                    {/* Secondary Actions */}
+                    <div className="space-y-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => exportHabitData(habit.id)}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Export
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => restartHabitData(habit.id)}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Restart
+                      </Button>
+                    </div>
+
+                    {/* Archive/Delete Actions */}
+                    <div className="col-span-2 space-y-1">
+                      {habit.archived ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => restoreHabit(habit.id)}
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Restore
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => archiveHabit(habit.id)}
+                        >
+                          <Archive className="h-3 w-3 mr-1" />
+                          Archive
+                        </Button>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => deleteHabit(habit.id)}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))
@@ -633,7 +1080,7 @@ export const HabitTracker: React.FC = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.filter(cat => cat !== 'All').map(category => (
+                      {categories.filter(cat => cat !== 'All' && cat !== 'Archived').map(category => (
                         <SelectItem key={category} value={category}>{category}</SelectItem>
                       ))}
                     </SelectContent>
@@ -920,6 +1367,181 @@ export const HabitTracker: React.FC = () => {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Edit Habit Modal */}
+      {showEditModal && editingHabit && (
+        <Card className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Edit className="h-5 w-5" />
+                  Edit Habit
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowEditModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <div>
+                  <Label>Habit Name</Label>
+                  <Input
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                    placeholder="Enter habit name"
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                    placeholder="Describe your habit..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              {/* Category and Goal */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Category</Label>
+                  <Select value={editForm.category} onValueChange={(value) => setEditForm({...editForm, category: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.filter(cat => cat !== 'All' && cat !== 'Archived').map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Daily Goal</Label>
+                  <Input
+                    type="number"
+                    value={editForm.goal}
+                    onChange={(e) => setEditForm({...editForm, goal: parseInt(e.target.value)})}
+                    min="1"
+                    max="10"
+                  />
+                </div>
+              </div>
+
+              {/* Difficulty and Priority */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Difficulty</Label>
+                  <Select value={editForm.difficulty} onValueChange={(value) => setEditForm({...editForm, difficulty: value as any})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {difficulties.map(difficulty => (
+                        <SelectItem key={difficulty} value={difficulty}>{difficulty}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Priority</Label>
+                  <Select value={editForm.priority} onValueChange={(value) => setEditForm({...editForm, priority: value as any})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorities.map(priority => (
+                        <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Reminder Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={editForm.reminderEnabled}
+                    onCheckedChange={(checked) => setEditForm({...editForm, reminderEnabled: checked})}
+                  />
+                  <Label>Enable Reminder</Label>
+                </div>
+                {editForm.reminderEnabled && (
+                  <div>
+                    <Label>Reminder Time</Label>
+                    <Input
+                      type="time"
+                      value={editForm.reminderTime}
+                      onChange={(e) => setEditForm({...editForm, reminderTime: e.target.value})}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <Label>Tags</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editForm.tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                      {tag}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0"
+                        onClick={() => removeTag(tag)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add a tag..."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.target as HTMLInputElement;
+                        addTag(input.value);
+                        input.value = '';
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const input = document.querySelector('input[placeholder="Add a tag..."]') as HTMLInputElement;
+                      if (input) {
+                        addTag(input.value);
+                        input.value = '';
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4">
+                <Button onClick={saveEditedHabit} className="flex-1">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Card>
       )}
     </div>
   );

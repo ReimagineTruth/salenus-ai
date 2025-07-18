@@ -3,6 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Pi, 
   Play, 
@@ -14,8 +18,19 @@ import {
   CheckCircle,
   ExternalLink,
   Eye,
-  Users
+  Users,
+  Edit,
+  Trash2,
+  Download,
+  Upload,
+  RotateCcw,
+  Copy,
+  Archive,
+  Settings,
+  Plus,
+  X
 } from 'lucide-react';
+import { DataManagementPanel } from './DataManagementPanel';
 
 interface AdHistory {
   id: string;
@@ -23,6 +38,9 @@ interface AdHistory {
   adTitle: string;
   duration: number;
   type: string;
+  notes?: string;
+  archived?: boolean;
+  archived_at?: string;
 }
 
 export const PiRewardTracker: React.FC = () => {
@@ -66,6 +84,190 @@ export const PiRewardTracker: React.FC = () => {
       type: 'banner'
     }
   ]);
+  const [notifications, setNotifications] = useState<{id: string, title: string, message: string, time: Date}[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingAd, setEditingAd] = useState<AdHistory | null>(null);
+  const [editForm, setEditForm] = useState({
+    adTitle: '',
+    duration: 0,
+    type: 'video' as const,
+    notes: ''
+  });
+
+  // CRUD Operations
+  const addAdEntry = (adData: Omit<AdHistory, 'id'>) => {
+    const newAd: AdHistory = {
+      ...adData,
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0]
+    };
+    setAdHistory(prev => [newAd, ...prev]);
+  };
+
+  const editAdEntry = (id: string, updates: Partial<AdHistory>) => {
+    setAdHistory(prev => prev.map(ad => 
+      ad.id === id ? { ...ad, ...updates } : ad
+    ));
+  };
+
+  // Open edit modal
+  const openEditModal = (ad: AdHistory) => {
+    setEditingAd(ad);
+    setEditForm({
+      adTitle: ad.adTitle,
+      duration: ad.duration,
+      type: ad.type as any,
+      notes: ad.notes || ''
+    });
+    setShowEditModal(true);
+  };
+
+  // Save edited ad entry
+  const saveEditedAd = () => {
+    if (!editingAd) return;
+
+    const updatedAd: AdHistory = {
+      ...editingAd,
+      adTitle: editForm.adTitle,
+      duration: editForm.duration,
+      type: editForm.type,
+      notes: editForm.notes
+    };
+
+    editAdEntry(editingAd.id, updatedAd);
+    setShowEditModal(false);
+    setEditingAd(null);
+  };
+
+  const deleteAdEntry = (id: string) => {
+    if (confirm('Are you sure you want to delete this ad entry?')) {
+      setAdHistory(prev => prev.filter(ad => ad.id !== id));
+    }
+  };
+
+  const archiveAdEntry = (id: string) => {
+    setAdHistory(prev => prev.map(ad => 
+      ad.id === id ? { ...ad, archived: true, archived_at: new Date().toISOString() } : ad
+    ));
+  };
+
+  const restoreAdEntry = (id: string) => {
+    setAdHistory(prev => prev.map(ad => 
+      ad.id === id ? { ...ad, archived: false, archived_at: undefined } : ad
+    ));
+  };
+
+  const duplicateAdEntry = (id: string) => {
+    const ad = adHistory.find(a => a.id === id);
+    if (ad) {
+      const duplicatedAd: AdHistory = {
+        ...ad,
+        id: Date.now().toString(),
+        date: new Date().toISOString().split('T')[0],
+        adTitle: `${ad.adTitle} (Copy)`
+      };
+      setAdHistory(prev => [duplicatedAd, ...prev]);
+    }
+  };
+
+  const restartData = () => {
+    if (confirm('Are you sure you want to restart all Pi Network data? This will reset all progress.')) {
+      setAdHistory([]);
+      setTotalAds(0);
+      setTodayAds(0);
+    }
+  };
+
+  const exportData = () => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      feature: 'PiRewardTracker',
+      data: {
+        adHistory,
+        totalAds,
+        todayAds,
+        weeklyGoal,
+        totalWatchTime: adHistory.reduce((sum, ad) => sum + ad.duration, 0)
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pi-reward-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = async (file: File) => {
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+      
+      if (importedData.data && importedData.data.adHistory) {
+        setAdHistory(importedData.data.adHistory);
+        setTotalAds(importedData.data.totalAds || 0);
+        setTodayAds(importedData.data.todayAds || 0);
+        setWeeklyGoal(importedData.data.weeklyGoal || 5);
+      }
+    } catch (error) {
+      console.error('Error importing Pi Network data:', error);
+      throw error;
+    }
+  };
+
+  const clearAllData = () => {
+    if (confirm('Are you sure you want to clear ALL Pi Network data? This action cannot be undone.')) {
+      setAdHistory([]);
+      setTotalAds(0);
+      setTodayAds(0);
+    }
+  };
+
+  const backupData = () => {
+    // Create a backup with timestamp
+    const backupData = {
+      backupDate: new Date().toISOString(),
+      feature: 'PiRewardTracker',
+      data: {
+        adHistory,
+        totalAds,
+        todayAds,
+        weeklyGoal
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pi-reward-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const shareData = () => {
+    const shareText = `Pi Network Integration Stats:
+- Total Ads Watched: ${totalAds}
+- Today's Ads: ${todayAds}
+- Weekly Goal Progress: ${weeklyAds}/${weeklyGoal}
+- Total Watch Time: ${adHistory.reduce((sum, ad) => sum + ad.duration, 0)} seconds`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'Pi Network Integration Stats',
+        text: shareText
+      });
+    } else {
+      navigator.clipboard.writeText(shareText);
+      alert('Stats copied to clipboard!');
+    }
+  };
 
   useEffect(() => {
     // Calculate total ads watched
@@ -99,6 +301,39 @@ export const PiRewardTracker: React.FC = () => {
           Pi Network
         </Badge>
       </div>
+
+      {/* Data Management Panel */}
+      <DataManagementPanel
+        featureName="Pi Network Integration"
+        dataCount={adHistory.length}
+        onExport={exportData}
+        onImport={importData}
+        onClearAll={clearAllData}
+        onRestartData={restartData}
+        onDuplicate={() => {
+          if (adHistory.length > 0) {
+            duplicateAdEntry(adHistory[0].id);
+          }
+        }}
+        onArchive={() => {
+          if (adHistory.length > 0) {
+            archiveAdEntry(adHistory[0].id);
+          }
+        }}
+        onRestore={() => {
+          if (adHistory.length > 0) {
+            restoreAdEntry(adHistory[0].id);
+          }
+        }}
+        onShare={shareData}
+        onBackup={backupData}
+        hasData={adHistory.length > 0}
+        canEdit={true}
+        canDelete={true}
+        canArchive={true}
+        canShare={true}
+        canBackup={true}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Ads Watched */}
@@ -254,23 +489,93 @@ export const PiRewardTracker: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {adHistory.slice(0, 5).map((ad) => (
-              <div key={ad.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <Play className="h-4 w-4 text-yellow-600" />
+          <div className="space-y-4">
+            {adHistory.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No ad history yet. Start watching Pi Network ads to build your history!</p>
+            ) : (
+              adHistory.map((ad) => (
+                <div key={ad.id} className={`flex items-center justify-between p-4 rounded-lg border ${ad.archived ? 'bg-gray-50 opacity-75' : 'bg-white'}`}>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <div className={`w-3 h-3 rounded-full ${
+                          ad.type === 'video' ? 'bg-red-500' : 
+                          ad.type === 'banner' ? 'bg-blue-500' : 
+                          'bg-purple-500'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{ad.adTitle}</h4>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>{ad.date}</span>
+                          <span>{ad.duration}s</span>
+                          <Badge variant="outline" className="text-xs">
+                            {ad.type}
+                          </Badge>
+                          {ad.archived && (
+                            <Badge variant="outline" className="text-xs text-orange-600">
+                              Archived
+                            </Badge>
+                          )}
+                        </div>
+                        {ad.notes && (
+                          <p className="text-sm text-gray-600 mt-1">{ad.notes}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{ad.adTitle}</p>
-                    <p className="text-sm text-gray-500">{ad.date} • {ad.duration}s</p>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2 ml-4">
+                    {/* Edit Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditModal(ad)}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+
+                    {/* Duplicate Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => duplicateAdEntry(ad.id)}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+
+                    {/* Archive/Restore Button */}
+                    {ad.archived ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => restoreAdEntry(ad.id)}
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => archiveAdEntry(ad.id)}
+                      >
+                        <Archive className="h-3 w-3" />
+                      </Button>
+                    )}
+
+                    {/* Delete Button */}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteAdEntry(ad.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  {ad.type}
-                </Badge>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -301,6 +606,81 @@ export const PiRewardTracker: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Ad Entry Modal */}
+      {showEditModal && editingAd && (
+        <Card className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Edit className="h-5 w-5" />
+                  Edit Ad Entry
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowEditModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label>Ad Title</Label>
+                <Input
+                  value={editForm.adTitle}
+                  onChange={(e) => setEditForm({...editForm, adTitle: e.target.value})}
+                  placeholder="Enter ad title"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Duration (seconds)</Label>
+                  <Input
+                    type="number"
+                    value={editForm.duration}
+                    onChange={(e) => setEditForm({...editForm, duration: parseInt(e.target.value)})}
+                    min="1"
+                    max="300"
+                  />
+                </div>
+                <div>
+                  <Label>Ad Type</Label>
+                  <Select value={editForm.type} onValueChange={(value) => setEditForm({...editForm, type: value as any})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="video">Video</SelectItem>
+                      <SelectItem value="banner">Banner</SelectItem>
+                      <SelectItem value="interactive">Interactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label>Notes</Label>
+                <Textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                  placeholder="Add notes about this ad..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button onClick={saveEditedAd} className="flex-1">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Card>
+      )}
     </div>
   );
 }; 

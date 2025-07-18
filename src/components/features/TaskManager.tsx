@@ -15,10 +15,10 @@ import {
   Check, 
   X, 
   Calendar, 
-  Clock, 
+  CKey, 
   BarChart3, 
   Target,
-  Lock,
+  Key,
   ArrowUp,
   TrendingUp,
   Award,
@@ -55,11 +55,13 @@ import {
   Briefcase,
   User,
   Heart,
-  Home
+  Home,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { DataService } from '@/lib/data-service';
 import type { Task as SupabaseTask, TaskNote as SupabaseTaskNote } from '@/lib/supabase';
+import { DataManagementPanel } from '../DataManagementPanel';
 
 interface Task {
   id: string;
@@ -127,6 +129,21 @@ export const TaskManager: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [timerActive, setTimerActive] = useState<string | null>(null);
   const [timers, setTimers] = useState<{[key: string]: number}>({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    priority: 'Medium' as const,
+    status: 'Todo' as const,
+    category: 'Work',
+    dueDate: '',
+    estimatedTime: 30,
+    tags: [] as string[],
+    reminderTime: '09:00',
+    reminderEnabled: true,
+    recurring: 'None' as const
+  });
 
   const categories = ['All', 'Work', 'Personal', 'Health', 'Learning', 'Finance', 'Home', 'Social'];
   const statuses = ['All', 'Todo', 'In Progress', 'Review', 'Done'];
@@ -413,11 +430,338 @@ export const TaskManager: React.FC = () => {
       const success = await DataService.deleteTask(taskId);
       if (success) {
         await loadTasks(); // Reload tasks
-        sendNotification('Task Deleted', 'Task has been removed from your list.');
+        sendNotification('Task Deleted', 'Task has been removed from your manager.');
       }
     } catch (error) {
       console.error('Error deleting task:', error);
     }
+  };
+
+  // Edit task functionality
+  const editTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      const success = await DataService.updateTask(taskId, updates);
+      if (success) {
+        await loadTasks(); // Reload tasks
+        sendNotification('Task Updated', 'Task has been updated successfully.');
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  // Open edit modal
+  const openEditModal = (task: Task) => {
+    setEditingTask(task);
+    setEditForm({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      status: task.status,
+      category: task.category,
+      dueDate: task.dueDate ? task.dueDate.toISOString().split('T')[0] : '',
+      estimatedTime: task.estimatedTime || 30,
+      tags: task.tags || [],
+      reminderTime: task.reminderTime || '09:00',
+      reminderEnabled: task.reminderEnabled,
+      recurring: task.recurring || 'None'
+    });
+    setShowEditModal(true);
+  };
+
+  // Save edited task
+  const saveEditedTask = async () => {
+    if (!editingTask) return;
+
+    try {
+      const updates = {
+        title: editForm.title,
+        description: editForm.description,
+        priority: editForm.priority,
+        status: editForm.status,
+        category: editForm.category,
+        due_date: editForm.dueDate ? new Date(editForm.dueDate).toISOString() : null,
+        estimated_time: editForm.estimatedTime,
+        tags: editForm.tags,
+        reminder_time: editForm.reminderTime,
+        reminder_enabled: editForm.reminderEnabled,
+        recurring: editForm.recurring
+      };
+
+      const success = await DataService.updateTask(editingTask.id, updates);
+      if (success) {
+        await loadTasks(); // Reload tasks
+        setShowEditModal(false);
+        setEditingTask(null);
+        sendNotification('Task Updated', 'Task has been updated successfully.');
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  // Add tag to task
+  const addTaskTag = (tag: string) => {
+    if (tag && !editForm.tags.includes(tag)) {
+      setEditForm(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag]
+      }));
+    }
+  };
+
+  // Remove tag from task
+  const removeTaskTag = (tagToRemove: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  // Restart task data (reset progress and time tracking)
+  const restartTaskData = async (taskId: string) => {
+    if (!confirm('Are you sure you want to restart this task? This will reset all progress and time tracking.')) return;
+
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const updates = {
+        completed: false,
+        status: 'Todo',
+        actual_time: 0,
+        time_spent: 0,
+        completed_at: null,
+        last_updated: new Date().toISOString(),
+        subtasks: task.subtasks.map(subtask => ({ ...subtask, completed: false }))
+      };
+
+      const success = await DataService.updateTask(taskId, updates);
+      if (success) {
+        await loadTasks(); // Reload tasks
+        sendNotification('Task Restarted', 'Task data has been reset successfully.');
+      }
+    } catch (error) {
+      console.error('Error restarting task:', error);
+    }
+  };
+
+  // Export task data
+  const exportTaskData = async (taskId?: string) => {
+    try {
+      const dataToExport = taskId 
+        ? tasks.filter(t => t.id === taskId)
+        : tasks;
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        user: user?.email,
+        tasks: dataToExport.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          completed: task.completed,
+          priority: task.priority,
+          status: task.status,
+          category: task.category,
+          dueDate: task.dueDate,
+          createdAt: task.createdAt,
+          completedAt: task.completedAt,
+          estimatedTime: task.estimatedTime,
+          actualTime: task.actualTime,
+          tags: task.tags,
+          attachments: task.attachments,
+          notes: task.notes,
+          assignee: task.assignee,
+          reminderTime: task.reminderTime,
+          reminderEnabled: task.reminderEnabled,
+          recurring: task.recurring,
+          subtasks: task.subtasks,
+          timeSpent: task.timeSpent,
+          lastUpdated: task.lastUpdated
+        }))
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `task-data-${taskId || 'all'}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      sendNotification('Data Exported', 'Task data has been exported successfully.');
+    } catch (error) {
+      console.error('Error exporting task data:', error);
+    }
+  };
+
+  // Import task data
+  const importTaskData = async (file: File) => {
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+      
+      if (importedData.tasks && Array.isArray(importedData.tasks)) {
+        // Process imported tasks
+        for (const importedTask of importedData.tasks) {
+          const taskData = {
+            userId: user!.id,
+            title: importedTask.title,
+            description: importedTask.description || '',
+            priority: importedTask.priority || 'Medium',
+            status: importedTask.status || 'Todo',
+            category: importedTask.category || 'Work',
+            dueDate: importedTask.dueDate,
+            estimatedTime: importedTask.estimatedTime || 30,
+            tags: importedTask.tags || [],
+            reminderTime: importedTask.reminderTime || '09:00',
+            reminderEnabled: importedTask.reminderEnabled !== false,
+            recurring: importedTask.recurring || 'None'
+          };
+
+          await DataService.createTask(taskData);
+        }
+
+        await loadTasks(); // Reload tasks
+        sendNotification('Data Imported', `${importedData.tasks.length} tasks have been imported successfully.`);
+      }
+    } catch (error) {
+      console.error('Error importing task data:', error);
+      sendNotification('Import Error', 'Failed to import task data. Please check the file format.');
+    }
+  };
+
+  // Clear all task data
+  const clearAllTaskData = async () => {
+    if (!confirm('Are you sure you want to clear ALL task data? This action cannot be undone.')) return;
+
+    try {
+      for (const task of tasks) {
+        await DataService.deleteTask(task.id);
+      }
+      
+      setTasks([]);
+      sendNotification('Data Cleared', 'All task data has been cleared successfully.');
+    } catch (error) {
+      console.error('Error clearing task data:', error);
+    }
+  };
+
+  // Duplicate task
+  const duplicateTask = async (taskId: string) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const taskData = {
+        userId: user!.id,
+        title: `${task.title} (Copy)`,
+        description: task.description,
+        priority: task.priority,
+        status: 'Todo', // Reset status for duplicate
+        category: task.category,
+        dueDate: task.dueDate,
+        estimatedTime: task.estimatedTime,
+        tags: task.tags,
+        reminderTime: task.reminderTime || '09:00',
+        reminderEnabled: task.reminderEnabled,
+        recurring: task.recurring
+      };
+
+      await DataService.createTask(taskData);
+      await loadTasks(); // Reload tasks
+      sendNotification('Task Duplicated', 'Task has been duplicated successfully.');
+    } catch (error) {
+      console.error('Error duplicating task:', error);
+    }
+  };
+
+  // Archive task (soft delete)
+  const archiveTask = async (taskId: string) => {
+    try {
+      const updates = {
+        archived: true,
+        archived_at: new Date().toISOString()
+      };
+
+      const success = await DataService.updateTask(taskId, updates);
+      if (success) {
+        await loadTasks(); // Reload tasks
+        sendNotification('Task Archived', 'Task has been archived successfully.');
+      }
+    } catch (error) {
+      console.error('Error archiving task:', error);
+    }
+  };
+
+  // Restore archived task
+  const restoreTask = async (taskId: string) => {
+    try {
+      const updates = {
+        archived: false,
+        archived_at: null
+      };
+
+      const success = await DataService.updateTask(taskId, updates);
+      if (success) {
+        await loadTasks(); // Reload tasks
+        sendNotification('Task Restored', 'Task has been restored successfully.');
+      }
+    } catch (error) {
+      console.error('Error restoring task:', error);
+    }
+  };
+
+  // Share task data
+  const shareTaskData = () => {
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const totalTasks = tasks.length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const totalTimeSpent = tasks.reduce((sum, t) => sum + (t.timeSpent || 0), 0);
+
+    const shareText = `Task Manager Stats:
+- Total Tasks: ${totalTasks}
+- Completed: ${completedTasks}
+- Completion Rate: ${completionRate}%
+- Total Time Spent: ${Math.round(totalTimeSpent / 60)} hours
+- Active Tasks: ${tasks.filter(t => t.status === 'In Progress').length}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'Task Manager Stats',
+        text: shareText
+      });
+    } else {
+      navigator.clipboard.writeText(shareText);
+      alert('Task stats copied to clipboard!');
+    }
+  };
+
+  // Backup task data
+  const backupTaskData = () => {
+    const backupData = {
+      backupDate: new Date().toISOString(),
+      feature: 'TaskManager',
+      data: {
+        tasks,
+        totalTasks: tasks.length,
+        completedTasks: tasks.filter(t => t.completed).length,
+        totalTimeSpent: tasks.reduce((sum, t) => sum + (t.timeSpent || 0), 0)
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `task-manager-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const filteredTasks = tasks.filter(task => {
@@ -546,6 +890,43 @@ export const TaskManager: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Data Management Panel */}
+      <DataManagementPanel
+        featureName="Task Manager"
+        dataCount={tasks.length}
+        onExport={() => exportTaskData()}
+        onImport={importTaskData}
+        onClearAll={clearAllTaskData}
+        onRestartData={() => {
+          if (tasks.length > 0) {
+            restartTaskData(tasks[0].id);
+          }
+        }}
+        onDuplicate={() => {
+          if (tasks.length > 0) {
+            duplicateTask(tasks[0].id);
+          }
+        }}
+        onArchive={() => {
+          if (tasks.length > 0) {
+            archiveTask(tasks[0].id);
+          }
+        }}
+        onRestore={() => {
+          if (tasks.length > 0) {
+            restoreTask(tasks[0].id);
+          }
+        }}
+        onShare={shareTaskData}
+        onBackup={backupTaskData}
+        hasData={tasks.length > 0}
+        canEdit={true}
+        canDelete={true}
+        canArchive={true}
+        canShare={true}
+        canBackup={true}
+      />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -730,10 +1111,7 @@ export const TaskManager: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setSelectedTask(task);
-                              setShowTaskDetails(true);
-                            }}
+                            onClick={() => openEditModal(task)}
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -794,10 +1172,7 @@ export const TaskManager: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setSelectedTask(task);
-                        setShowTaskDetails(true);
-                      }}
+                      onClick={() => openEditModal(task)}
                     >
                       <Edit className="h-3 w-3" />
                     </Button>
@@ -952,6 +1327,205 @@ export const TaskManager: React.FC = () => {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {showEditModal && editingTask && (
+        <Card className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Edit className="h-5 w-5" />
+                  Edit Task
+                </CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowEditModal(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <div>
+                  <Label>Task Title</Label>
+                  <Input
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                    placeholder="Enter task title"
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    value={editForm.description}
+                    onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                    placeholder="Describe your task..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              {/* Category and Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Category</Label>
+                  <Select value={editForm.category} onValueChange={(value) => setEditForm({...editForm, category: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.filter(cat => cat !== 'All').map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select value={editForm.status} onValueChange={(value) => setEditForm({...editForm, status: value as any})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statuses.filter(status => status !== 'All').map(status => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Priority and Due Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Priority</Label>
+                  <Select value={editForm.priority} onValueChange={(value) => setEditForm({...editForm, priority: value as any})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorities.filter(pri => pri !== 'All').map(priority => (
+                        <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Due Date</Label>
+                  <Input
+                    type="date"
+                    value={editForm.dueDate}
+                    onChange={(e) => setEditForm({...editForm, dueDate: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              {/* Estimated Time and Recurring */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Estimated Time (minutes)</Label>
+                  <Input
+                    type="number"
+                    value={editForm.estimatedTime}
+                    onChange={(e) => setEditForm({...editForm, estimatedTime: parseInt(e.target.value)})}
+                    min="1"
+                  />
+                </div>
+                <div>
+                  <Label>Recurring</Label>
+                  <Select value={editForm.recurring} onValueChange={(value) => setEditForm({...editForm, recurring: value as any})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {recurringOptions.map(option => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Reminder Settings */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={editForm.reminderEnabled}
+                    onCheckedChange={(checked) => setEditForm({...editForm, reminderEnabled: checked})}
+                  />
+                  <Label>Enable Reminder</Label>
+                </div>
+                {editForm.reminderEnabled && (
+                  <div>
+                    <Label>Reminder Time</Label>
+                    <Input
+                      type="time"
+                      value={editForm.reminderTime}
+                      onChange={(e) => setEditForm({...editForm, reminderTime: e.target.value})}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <Label>Tags</Label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {editForm.tags.map(tag => (
+                    <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                      {tag}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0"
+                        onClick={() => removeTaskTag(tag)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add a tag..."
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        const input = e.target as HTMLInputElement;
+                        addTaskTag(input.value);
+                        input.value = '';
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const input = document.querySelector('input[placeholder="Add a tag..."]') as HTMLInputElement;
+                      if (input) {
+                        addTaskTag(input.value);
+                        input.value = '';
+                      }
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-4">
+                <Button onClick={saveEditedTask} className="flex-1">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Card>
       )}
     </div>
   );

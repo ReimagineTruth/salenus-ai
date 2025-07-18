@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, Calendar, Plus, CheckCircle, Clock, Link2, ExternalLink, Settings, Bell, Trash2, Edit, Save, X } from 'lucide-react';
+import { Key, ArrowUp, Calendar, Plus, Edit, X, Save, Settings, Link2, Trash2 } from 'lucide-react';
 
 interface CalendarEvent {
   id: string;
@@ -76,7 +76,7 @@ export const CalendarIntegration: React.FC<{ onUpgrade?: () => void }> = ({ onUp
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">Calendar Integration</h3>
           <p className="text-slate-500 mb-4">Sync your habits and tasks with Google, Apple, or Outlook calendars.</p>
           <Button onClick={onUpgrade} className="bg-purple-600 hover:bg-purple-700">

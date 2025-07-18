@@ -116,18 +116,25 @@ export class SupabaseService {
   }
 
   static async getHabits(userId: string): Promise<Habit[]> {
-    const { data, error } = await supabase
-      .from('habits')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching habits:', error);
+      if (error) {
+        console.error('Error fetching habits:', error);
+        // Return empty array instead of throwing error
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Exception fetching habits:', error);
+      // Return empty array as fallback
       return [];
     }
-
-    return data || [];
   }
 
   static async updateHabit(habitId: string, updates: Partial<Habit>): Promise<Habit | null> {
@@ -272,18 +279,25 @@ export class SupabaseService {
   }
 
   static async getTasks(userId: string): Promise<Task[]> {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching tasks:', error);
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        // Return empty array instead of throwing error
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Exception fetching tasks:', error);
+      // Return empty array as fallback
       return [];
     }
-
-    return data || [];
   }
 
   static async updateTask(taskId: string, updates: Partial<Task>): Promise<Task | null> {

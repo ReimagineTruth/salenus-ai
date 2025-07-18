@@ -35,15 +35,19 @@ import {
   Brain,
   User,
   LogOut,
-  Mail
+  LogIn,
+  Mail,
+  Key
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { LoginModal } from '@/components/LoginModal';
+import { testSupabaseConnection, testAuthFlow } from '@/lib/test-auth';
 import { UserDashboard } from '@/components/UserDashboard';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PaymentModal } from '@/components/PaymentModal';
 import { PiAdModal } from '@/components/PiAdModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DemoDashboard } from '@/components/DemoDashboard';
 import { CookieConsent } from '@/components/CookieConsent';
 import { useCookieConsent } from '@/hooks/useCookieConsent';
@@ -58,8 +62,9 @@ interface IndexProps {
 }
 
 const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan, onLogout }) => {
-  const { login, isLoading, upgradePlan } = useAuth();
+  const { login, register, isLoading, upgradePlan } = useAuth();
   const { hasConsented, acceptCookies, declineCookies } = useCookieConsent();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [pricingToggle, setPricingToggle] = useState('monthly');
   const [recommendationResult, setRecommendationResult] = useState('');
@@ -398,44 +403,33 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   };
 
   const handleLogin = async (email: string, password: string, plan: any) => {
-    await login(email, password, plan);
-    setShowLoginModal(false);
-    setPendingPlan(plan);
-    setPaymentOpen(true);
-    setIsUpgrade(false);
+    try {
+      await login(email, password);
+      setShowLoginModal(false);
+      // After login, redirect to dashboard
+      navigate('/dashboard');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Login failed. Please check your credentials.');
+    }
   };
 
   const handleRegister = async (email: string, password: string, name: string, plan: any) => {
-    // For sign-up, we'll create the account but stay on landing page
-    // We'll use a different approach - create user but don't log them in
     try {
-      // Create user in localStorage without logging them in
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const existingUser = users.find((u: any) => u.email === email);
+      // Use the real Supabase registration from useAuth hook
+      await register(email, password, name, plan);
       
-      if (existingUser) {
-        throw new Error('User already exists. Please sign in instead.');
-      }
-      
-      const newUser = {
-        id: Date.now().toString(),
-        email,
-        name,
-        password,
-        plan,
-        hasPaid: false,
-        planExpiry: null,
-        isActive: true,
-        createdAt: new Date().toISOString()
-      };
-      
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
-      // Route to landing page after sign up
-      window.location.href = '/';
       // Close modal and show success message
       setShowLoginModal(false);
-      alert('Account created successfully! Please sign in to access your dashboard.');
+      alert('Account created successfully! You are now signed in.');
+      
+      // After registration, check if user selected a paid plan
+      if (plan === 'Free') {
+        // Free plan users go directly to dashboard
+        navigate('/dashboard');
+      } else {
+        // Paid plan users go to payment
+        navigate('/payment');
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error creating account');
     }
@@ -463,8 +457,12 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   };
 
   const handleChoosePlan = (planName: string) => {
-    if (onChoosePlan) {
-      onChoosePlan(planName, pricingToggle);
+    if (user) {
+      // User is logged in, redirect to payment
+      navigate(`/payment?plan=${planName}`);
+    } else {
+      // User is not logged in, redirect to signup with plan
+      navigate(`/signup?plan=${planName}`);
     }
     setShowPlanSelection(false);
   };
@@ -473,17 +471,14 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     if (user) {
       if (hasPaid) {
         // User has paid, they can access the dashboard
-        // This would typically redirect to dashboard
-        console.log('User has paid, accessing dashboard');
-    } else {
-        // User is logged in but hasn't paid, choose a plan
-        if (onChoosePlan) {
-          onChoosePlan(planName, pricingToggle);
-    }
+        navigate('/dashboard');
+      } else {
+        // User is logged in but hasn't paid, redirect to payment
+        navigate(`/payment?plan=${planName}`);
       }
     } else {
-      // User is not logged in, show login modal
-      setShowLoginModal(true);
+      // User is not logged in, redirect to signup with plan
+      navigate(`/signup?plan=${planName}`);
     }
   };
 
@@ -555,6 +550,21 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     window.location.reload();
   };
 
+  const testAuthentication = async () => {
+    console.log('Testing authentication...');
+    const connectionTest = await testSupabaseConnection();
+    if (connectionTest) {
+      const authTest = await testAuthFlow();
+      if (authTest) {
+        alert('Authentication test passed! Real authentication is working.');
+      } else {
+        alert('Authentication test failed. Check console for details.');
+      }
+    } else {
+      alert('Connection test failed. Check console for details.');
+    }
+  };
+
   if (user && hasPaid) {
     return <UserDashboard user={user} onLogout={onLogout} onUpgrade={handleUpgrade} />;
   }
@@ -581,6 +591,13 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
             {/* Enhanced Desktop Navigation */}
             <nav className="hidden lg:flex items-center space-x-8">
               <div className="flex items-center space-x-6">
+                <button
+                  onClick={testAuthentication}
+                  className="relative text-gray-700 hover:text-indigo-600 transition-all duration-300 text-sm font-medium group px-3 py-2 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50"
+                >
+                  <Key className="h-4 w-4 mr-2 inline" />
+                  Test Auth
+                </button>
                 <a href="#features" className="relative text-gray-700 hover:text-indigo-600 transition-all duration-300 text-sm font-medium group px-3 py-2 rounded-lg hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50">
                   <BarChart3 className="h-4 w-4 mr-2 inline" />
                   Features
@@ -660,7 +677,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                     size="sm" 
                     variant="outline"
                     className="text-sm border-gray-300 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-300 hover:scale-105" 
-                    onClick={() => { setSelectedDemoPlan('Basic'); setShowDemoDashboard(true); }}
+                    onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
                   >
                     <User className="h-4 w-4 mr-2" />
                     Demo
@@ -800,7 +817,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                       <Button 
                         variant="outline"
                         className="w-full border-gray-300 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-300 py-4 text-base font-semibold" 
-                        onClick={() => { setSelectedDemoPlan('Basic'); setShowDemoDashboard(true); }}
+                        onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
                       >
                         <User className="h-5 w-5 mr-3" />
                         Try Demo
@@ -859,31 +876,162 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             {user ? (
-              <Button
-                size="lg"
-                className="bg-white text-indigo-600 hover:bg-gray-100 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
-                onClick={() => window.location.href = '/dashboard'}
-              >
-                Access Your Dashboard
-              </Button>
+              <>
+                <Button
+                  size="lg"
+                  className="bg-white text-indigo-600 hover:bg-gray-100 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <BarChart3 className="h-5 w-5 mr-2" />
+                  Access Your Dashboard
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-2 border-white text-white hover:bg-white/20 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold backdrop-blur-sm"
+                  onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  View Demo
+                </Button>
+              </>
             ) : (
-              <Button
-                size="lg"
-                className="bg-white text-indigo-600 hover:bg-gray-100 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
-                onClick={() => setShowLoginModal(true)}
-              >
-                Get Started
-              </Button>
+              <>
+                <Button
+                  size="lg"
+                  className="bg-white text-indigo-600 hover:bg-gray-100 text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
+                  onClick={() => navigate('/signup')}
+                >
+                  <User className="h-5 w-5 mr-2" />
+                  Create Account
+                </Button>
+                <Button
+                  size="lg"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-base sm:text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-bold"
+                  onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  Try Demo
+                </Button>
+                <Button
+                  size="lg"
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-base sm:text-lg px-6 py-4 rounded-xl transition-all duration-300 hover:scale-105 font-semibold"
+                  onClick={() => navigate('/login')}
+                >
+                  <LogIn className="h-5 w-5 mr-2" />
+                  Sign In
+                </Button>
+              </>
             )}
           </div>
-          <div className="flex flex-wrap justify-center gap-3 text-sm text-white/80">
+          <div className="flex flex-wrap justify-center gap-3 text-sm text-white/80 mb-6">
             <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi-Powered AI Insights</span>
             <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi Payments Integration</span>
             <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi Network Community</span>
             <span className="px-3 py-1 bg-white/10 rounded-full backdrop-blur-sm">✓ Pi-Based Rewards</span>
           </div>
+          
+          {/* Demo Call-to-Action */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-white mb-2">Experience Salenus AI First</h3>
+              <p className="text-white/80 mb-4">Try our interactive demo to see how AI coaching can transform your habits</p>
+              <Button
+                size="lg"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-base px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold"
+                onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
+              >
+                <Play className="h-5 w-5 mr-2" />
+                Launch Interactive Demo
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* Quick Access Floating Section */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        {user ? (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                                  <Button
+                    size="lg"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 rounded-full p-4"
+                    onClick={() => navigate('/dashboard')}
+                  >
+                    <BarChart3 className="h-6 w-6" />
+                  </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Access Dashboard</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="bg-white hover:bg-gray-50 text-indigo-600 border-indigo-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 rounded-full p-4"
+                  onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
+                >
+                  <Play className="h-6 w-6" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Try Demo</p>
+              </TooltipContent>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                                  <Button
+                    size="lg"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 rounded-full p-4"
+                    onClick={() => navigate('/signup')}
+                  >
+                    <User className="h-6 w-6" />
+                  </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create Account</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="bg-white hover:bg-gray-50 text-indigo-600 border-indigo-200 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 rounded-full p-4"
+                  onClick={() => { setSelectedDemoPlan('Basic' as const); setShowDemoDashboard(true); }}
+                >
+                  <Play className="h-6 w-6" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Try Demo</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                                  <Button
+                    size="lg"
+                    variant="ghost"
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 rounded-full p-4"
+                    onClick={() => navigate('/login')}
+                  >
+                    <LogIn className="h-6 w-6" />
+                  </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Sign In</p>
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
+      </div>
 
       {/* Dashboard Access Section for Paid Users */}
       {user && hasPaid && (
@@ -900,7 +1048,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                 <Button 
                   size="lg" 
                   className="bg-indigo-600 hover:bg-indigo-700 text-white text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 font-semibold group"
-                  onClick={() => window.location.href = '/dashboard'}
+                  onClick={() => navigate('/dashboard')}
                 >
                   <BarChart3 className="h-5 w-5 mr-2" />
                   Access Your Dashboard
@@ -1822,24 +1970,24 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
         <DialogContent className="max-w-7xl max-h-[95vh] overflow-hidden p-0">
           <DialogHeader className="p-4 sm:p-6 pb-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <DialogTitle className="text-xl sm:text-2xl font-bold">
+              <div className="text-center sm:text-left">
+                <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-900">
                   {selectedDemoPlan} Plan Dashboard Demo
                 </DialogTitle>
-                <p className="text-gray-600 text-sm sm:text-base">
+                <p className="text-gray-600 text-sm sm:text-base mt-2">
                   Interactive preview of your Salenus A.I dashboard
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button 
                   onClick={handleOpenHabitTracker}
-                  className="bg-violet-600 hover:bg-violet-700 text-white text-sm"
+                  className="bg-violet-600 hover:bg-violet-700 text-white text-sm py-2 px-4"
                 >
                   Try Free Demo Tracker
                 </Button>
                 <Button 
                   onClick={() => setShowPlanSelection(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-sm py-2 px-4"
                 >
                   Get Started
                 </Button>
@@ -1848,26 +1996,37 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
           </DialogHeader>
 
           {/* Showcase All Demos Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6">
-            {['Basic', 'Pro', 'Premium'].map((plan) => (
-              <div key={plan} className="bg-white rounded-xl shadow-lg p-4:p-6 flex flex-col items-center">
-                <h3 className={`text-lg sm:text-xl font-bold mb-2 text-center ${plan === 'Basic' ? 'text-blue-600' : plan === 'Pro' ? 'text-indigo-600' : 'text-purple-600'}`}>{plan} Plan</h3>
-                <p className="text-gray-600 mb-4 text-center text-sm sm:text-base">
-                  {plan === 'Basic' && 'Essential habit tracking, task management, and community challenges.'}
-                  {plan === 'Pro' && 'Unlock mood tracking, smart reminders, and advanced goals.'}
-                  {plan === 'Premium' && 'AI coaching, advanced analytics, and exclusive features.'}
-                </p>
-                <Button
-                  className={`w-full text-sm ${plan === 'Basic' ? 'bg-blue-600 hover:bg-blue-700' : plan === 'Pro' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'} text-white`}
-                  onClick={() => handleShowDemo(plan)}
-                >
-                  View Demo
-                </Button>
-              </div>
-            ))}
+          <div className="overflow-x-auto overflow-y-hidden">
+            <div className="flex flex-nowrap sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 p-4 sm:p-6 min-w-max sm:min-w-0">
+              {(['Basic', 'Pro', 'Premium'] as const).map((plan) => (
+                <div key={plan} className="bg-white rounded-xl shadow-lg p-4:p-6 flex flex-col items-center border border-gray-100 min-w-[280px] sm:min-w-0 flex-shrink-0 sm:flex-shrink">
+                  <h3 className={`text-lg sm:text-xl font-bold mb-3 text-center ${plan === 'Basic' ? 'text-blue-600' : plan === 'Pro' ? 'text-indigo-600' : 'text-purple-600'}`}>
+                    {plan} Plan
+                  </h3>
+                  <p className="text-gray-600 mb-4 text-center text-sm sm:text-base leading-relaxed flex-1">
+                    {plan === 'Basic' && 'Essential habit tracking, task management, and community challenges.'}
+                    {plan === 'Pro' && 'Unlock mood tracking, smart reminders, and advanced goals.'}
+                    {plan === 'Premium' && 'AI coaching, advanced analytics, and exclusive features.'}
+                  </p>
+                  <Button
+                    className={`w-full text-sm py-3 ${plan === 'Basic' ? 'bg-blue-600 hover:bg-blue-700' : plan === 'Pro' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'} text-white font-medium`}
+                    onClick={() => handleShowDemo(plan)}
+                  >
+                    View Demo
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="overflow-y-auto max-h-[calc(95vh-300)] px-4 sm:px-6 pb-6">
+          {/* Demo Dashboard Content */}
+          <div className="overflow-y-auto max-h-[45vh] sm:max-h-[calc(95vh-500)] px-4 pb-6">
+            <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 mb-3">Interactive Dashboard Preview</h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Explore the features and interface of your selected plan. This is a fully interactive demo of your future dashboard.
+              </p>
+            </div>
             <DemoDashboard 
               plan={selectedDemoPlan} 
               onUpgrade={() => {

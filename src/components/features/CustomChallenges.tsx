@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, Trophy, Plus, Users, Calendar, Target, Award, TrendingUp, Clock, Star, Share, Edit, Trash } from 'lucide-react';
+import { Key, Clock, Trophy, Users, TrendingUp, Award, Plus, Calendar, Target, Edit, Share, Star, ArrowUp } from 'lucide-react';
 
 export const CustomChallenges: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -84,7 +84,7 @@ export const CustomChallenges: React.FC<{ onUpgrade?: () => void }> = ({ onUpgra
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">Custom Challenges</h3>
           <p className="text-slate-500 mb-4">Create and participate in custom challenges with rewards and milestones.</p>
           <Button onClick={onUpgrade} className="bg-indigo-600 hover:bg-indigo-700">

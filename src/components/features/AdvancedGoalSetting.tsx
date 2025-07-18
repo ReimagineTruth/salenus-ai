@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, Target, Calendar, CheckCircle, Circle, Plus, Edit, Trash, Star, Award, TrendingUp, Clock } from 'lucide-react';
+import { Key, Clock, Plus, ArrowUp, Target, Calendar, Award, Edit, Trash, CheckCircle, Circle, TrendingUp } from 'lucide-react';
 
 export const AdvancedGoalSetting: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -71,7 +71,7 @@ export const AdvancedGoalSetting: React.FC<{ onUpgrade?: () => void }> = ({ onUp
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">Advanced Goal Setting</h3>
           <p className="text-slate-500 mb-4">Set complex goals with sub-milestones and automated progress tracking.</p>
           <Button onClick={onUpgrade} className="bg-indigo-600 hover:bg-indigo-700">

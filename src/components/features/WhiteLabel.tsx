@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, Settings, Globe, Paintbrush, ExternalLink, CheckCircle } from 'lucide-react';
+import { Key, ArrowUp, Paintbrush, Globe, CheckCircle, ExternalLink, Settings } from 'lucide-react';
 
 export const WhiteLabel: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -12,7 +12,7 @@ export const WhiteLabel: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) 
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">White-Label Options</h3>
           <p className="text-slate-500 mb-4">Customize branding, domain, and partner options for your organization.</p>
           <Button onClick={onUpgrade} className="bg-purple-600 hover:bg-purple-700">

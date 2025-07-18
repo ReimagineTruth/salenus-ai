@@ -14,7 +14,7 @@ import {
   Calendar,
   Award,
   Lightbulb,
-  Clock,
+  CKey,
   CheckCircle,
   AlertCircle,
   Star

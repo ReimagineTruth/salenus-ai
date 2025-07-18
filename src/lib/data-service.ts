@@ -420,4 +420,168 @@ export class DataService {
 
     return results;
   }
+
+  // Notification Settings Management
+  static async saveNotificationSettings(userId: string, settings: any) {
+    try {
+      // Save to localStorage
+      const settingsWithoutIcons = settings.map(({ icon, ...setting }: any) => setting);
+      localStorage.setItem(`notificationSettings_${userId}`, JSON.stringify(settingsWithoutIcons));
+      
+      // Save to Supabase if available
+      try {
+        await SupabaseService.createOrUpdateUserSettings({
+          userId,
+          settingsType: 'notifications',
+          settingsData: settingsWithoutIcons
+        });
+      } catch (error) {
+        console.error('Error saving notification settings to Supabase:', error);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving notification settings:', error);
+      return { success: false, error };
+    }
+  }
+
+  static async loadNotificationSettings(userId: string) {
+    try {
+      let settings = null;
+      
+      // Try to load from Supabase first
+      try {
+        const supabaseSettings = await SupabaseService.getUserSettings(userId, 'notifications');
+        if (supabaseSettings) {
+          settings = supabaseSettings.settings_data;
+          // Also save to localStorage for offline access
+          localStorage.setItem(`notificationSettings_${userId}`, JSON.stringify(settings));
+        }
+      } catch (error) {
+        console.error('Error loading from Supabase:', error);
+      }
+      
+      // Fallback to localStorage if Supabase fails or no data
+      if (!settings) {
+        const localSettings = localStorage.getItem(`notificationSettings_${userId}`);
+        if (localSettings) {
+          settings = JSON.parse(localSettings);
+        }
+      }
+      
+      return settings;
+    } catch (error) {
+      console.error('Error loading notification settings:', error);
+      return null;
+    }
+  }
+
+  static async saveNotificationSchedules(userId: string, schedules: any) {
+    try {
+      // Save to localStorage
+      localStorage.setItem(`notificationSchedules_${userId}`, JSON.stringify(schedules));
+      
+      // Save to Supabase if available
+      try {
+        await SupabaseService.createOrUpdateUserSettings({
+          userId,
+          settingsType: 'notification_schedules',
+          settingsData: schedules
+        });
+      } catch (error) {
+        console.error('Error saving schedules to Supabase:', error);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving schedules:', error);
+      return { success: false, error };
+    }
+  }
+
+  static async loadNotificationSchedules(userId: string) {
+    try {
+      let schedules = null;
+      
+      // Try to load from Supabase first
+      try {
+        const supabaseSchedules = await SupabaseService.getUserSettings(userId, 'notification_schedules');
+        if (supabaseSchedules) {
+          schedules = supabaseSchedules.settings_data;
+          // Also save to localStorage for offline access
+          localStorage.setItem(`notificationSchedules_${userId}`, JSON.stringify(schedules));
+        }
+      } catch (error) {
+        console.error('Error loading schedules from Supabase:', error);
+      }
+      
+      // Fallback to localStorage if Supabase fails or no data
+      if (!schedules) {
+        const localSchedules = localStorage.getItem(`notificationSchedules_${userId}`);
+        if (localSchedules) {
+          schedules = JSON.parse(localSchedules);
+        }
+      }
+      
+      return schedules;
+    } catch (error) {
+      console.error('Error loading schedules:', error);
+      return null;
+    }
+  }
+
+  static async saveQuietHours(userId: string, quietHours: any) {
+    try {
+      // Save to localStorage
+      localStorage.setItem(`quietHours_${userId}`, JSON.stringify(quietHours));
+      
+      // Save to Supabase if available
+      try {
+        await SupabaseService.createOrUpdateUserSettings({
+          userId,
+          settingsType: 'quiet_hours',
+          settingsData: quietHours
+        });
+      } catch (error) {
+        console.error('Error saving quiet hours to Supabase:', error);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving quiet hours:', error);
+      return { success: false, error };
+    }
+  }
+
+  static async loadQuietHours(userId: string) {
+    try {
+      let quietHours = null;
+      
+      // Try to load from Supabase first
+      try {
+        const supabaseQuietHours = await SupabaseService.getUserSettings(userId, 'quiet_hours');
+        if (supabaseQuietHours) {
+          quietHours = supabaseQuietHours.settings_data;
+          // Also save to localStorage for offline access
+          localStorage.setItem(`quietHours_${userId}`, JSON.stringify(quietHours));
+        }
+      } catch (error) {
+        console.error('Error loading quiet hours from Supabase:', error);
+      }
+      
+      // Fallback to localStorage if Supabase fails or no data
+      if (!quietHours) {
+        const localQuietHours = localStorage.getItem(`quietHours_${userId}`);
+        if (localQuietHours) {
+          quietHours = JSON.parse(localQuietHours);
+        }
+      }
+      
+      return quietHours;
+    } catch (error) {
+      console.error('Error loading quiet hours:', error);
+      return null;
+    }
+  }
 } 

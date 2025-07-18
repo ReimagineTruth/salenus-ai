@@ -1,26 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock, UserPlus, LogIn } from 'lucide-react';
+import { Key, UserPlus, LogIn } from 'lucide-react';
 import { CookieConsent } from '@/components/CookieConsent';
 import { useCookieConsent } from '@/hooks/useCookieConsent';
+import { toast } from '@/hooks/use-toast';
 
 interface LoginPageProps {
   onLogin?: (userData: any) => void;
   onSignup?: (userData: any) => void;
+  forceSignupMode?: boolean;
+  selectedPlan?: string;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup }) => {
-  const { login, register, isLoading } = useAuth();
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup, forceSignupMode = false, selectedPlan = 'Free' }) => {
+  const { login, register, isLoading, authUser, user } = useAuth();
   const { hasConsented, acceptCookies, declineCookies } = useCookieConsent();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const [isSignupMode, setIsSignupMode] = useState(false);
+  const [isSignupMode, setIsSignupMode] = useState(forceSignupMode);
   const [showCookieConsent, setShowCookieConsent] = useState(false);
+
+  // Check if user is already authenticated and redirect if needed
+  useEffect(() => {
+    if (authUser && user) {
+      // User is already authenticated and has data
+      if (forceSignupMode) {
+        // If on signup page, redirect to landing page
+        toast({
+          title: "Welcome back! 👋",
+          description: `Great to see you again, ${user.name || user.email?.split('@')[0]}! Redirecting to landing page...`,
+          duration: 3000,
+        });
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      } else {
+        // If on login page, redirect to dashboard
+        toast({
+          title: "Welcome back! 👋",
+          description: `Great to see you again, ${user.name || user.email?.split('@')[0]}! Redirecting to your dashboard...`,
+          duration: 3000,
+        });
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      }
+    } else if (authUser && !user) {
+      // User is authenticated but no app data
+      if (forceSignupMode) {
+        // If on signup page, redirect to landing page
+        toast({
+          title: "Setting up your account...",
+          description: "Creating your profile and redirecting to landing page...",
+          duration: 3000,
+        });
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      } else {
+        // If on login page, redirect to dashboard
+        toast({
+          title: "Setting up your account...",
+          description: "Creating your profile and redirecting to dashboard...",
+          duration: 3000,
+        });
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      }
+    }
+  }, [authUser, user, forceSignupMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,18 +101,48 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup }) => {
           return;
         }
         
-        userData = await register(email, password, name, 'Free');
+        userData = await register(email, password, name, selectedPlan as any);
         if (onSignup) {
-          onSignup(userData);
+          onSignup({ email, password, name, plan: selectedPlan });
         }
+        
+        // Show welcome toast for new users
+        toast({
+          title: "Welcome to Salenus A.I! 🎉",
+          description: `Account created successfully for ${name}! Setting up your dashboard...`,
+          duration: 3000,
+        });
+        
+        // After successful signup, redirect to dashboard (since we're using mock payment)
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
       } else {
-        userData = await login(email, password, 'Free');
+        userData = await login(email, password);
         if (onLogin) {
-          onLogin(userData);
+          onLogin({ email, password });
         }
+        
+        // Show welcome toast
+        toast({
+          title: "Welcome back! 👋",
+          description: `Great to see you again, ${email.split('@')[0]}! Redirecting to your dashboard...`,
+          duration: 3000,
+        });
+        
+        // After successful login, redirect to dashboard
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please try again.');
+      console.error('Authentication error:', err);
+      if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
+        setError('An account with this email already exists. Please sign in instead.');
+        setIsSignupMode(false); // Switch to login mode
+      } else {
+        setError(err.message || 'Authentication failed. Please try again.');
+      }
     }
   };
 
@@ -140,7 +224,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onSignup }) => {
               <Input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Enter your password" />
             </div>
             <div className="bg-green-50 p-3 rounded text-xs text-green-700 flex items-center gap-2">
-              <Lock className="h-4 w-4" />
+              <Key className="h-4 w-4" />
               Real authentication: Create an account or sign in with existing credentials
             </div>
             {error && <div className="text-red-600 text-sm">{error}</div>}

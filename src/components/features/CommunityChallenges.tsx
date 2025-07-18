@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Users, Trophy, CheckCircle, XCircle, Calendar, Target, Award, Zap, TrendingUp, Star, Flame, Clock, BookOpen, Heart, BarChart3, List } from 'lucide-react';
+import { Key, Clock, BarChart3, List, Zap, BookOpen, Award, Heart, Trophy, TrendingUp, Target, Users, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Challenge {
@@ -219,7 +219,7 @@ export const CommunityChallenges: React.FC = () => {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'Productivity': return <Target className="h-4 w-4" />;
+      case 'Productivity': return <BarChart3 className="h-4 w-4" />;
       case 'Learning': return <BookOpen className="h-4 w-4" />;
       case 'Fitness': return <Zap className="h-4 w-4" />;
       case 'Mindfulness': return <Award className="h-4 w-4" />;

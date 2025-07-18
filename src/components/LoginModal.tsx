@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { X, Check, Lock, UserPlus, LogIn } from 'lucide-react';
+import { X, Check, Key, UserPlus, LogIn } from 'lucide-react';
 import { UserPlan } from '@/hooks/useAuth';
 
 interface LoginModalProps {
@@ -179,10 +179,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               />
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center space-x-2 text-sm text-blue-700">
-                <Lock className="h-4 w-4" />
-                <span>Mock Authentication - Any email/password will work</span>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center space-x-2 text-sm text-green-700">
+                <Key className="h-4 w-4" />
+                <span>Real Authentication - Create an account or sign in with existing credentials</span>
               </div>
             </div>
 

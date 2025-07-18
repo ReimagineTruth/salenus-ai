@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Clock, Calendar, CheckCircle, AlertCircle, Settings, Zap, Moon, Sun, Smartphone, Monitor as Desktop, X } from 'lucide-react';
+import { Key, Clock, CheckCircle, Calendar, Zap, Bell, Sun, Settings, Moon, Smartphone, Monitor } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { DataService } from '@/lib/data-service';
 
 interface NotificationSetting {
   id: string;
@@ -24,6 +25,26 @@ interface NotificationSchedule {
   days: string[];
   enabled: boolean;
 }
+
+// Helper function to get icon for a notification setting
+const getNotificationIcon = (id: string) => {
+  switch (id) {
+    case 'habit-reminders':
+      return <CheckCircle className="h-4 w-4" />;
+    case 'task-deadlines':
+      return <Calendar className="h-4 w-4" />;
+    case 'streak-alerts':
+      return <Zap className="h-4 w-4" />;
+    case 'weekly-reports':
+      return <Clock className="h-4 w-4" />;
+    case 'challenge-updates':
+      return <Bell className="h-4 w-4" />;
+    case 'motivational-messages':
+      return <Sun className="h-4 w-4" />;
+    default:
+      return <Bell className="h-4 w-4" />;
+  }
+};
 
 export const BasicNotifications: React.FC = () => {
   const { user } = useAuth();
@@ -120,20 +141,65 @@ export const BasicNotifications: React.FC = () => {
     averageResponseTime: '2.3 minutes'
   });
 
-  // Load settings from localStorage
+  // Load settings from DataService (localStorage + Supabase)
   useEffect(() => {
-    const savedSettings = localStorage.getItem(`notificationSettings_${user?.id}`);
-    if (savedSettings) {
-      setNotificationSettings(JSON.parse(savedSettings));
-    }
+    const loadSettings = async () => {
+      if (user?.id) {
+        try {
+          // Load notification settings
+          const savedSettings = await DataService.loadNotificationSettings(user.id);
+          if (savedSettings) {
+            // Re-add icons to the loaded settings
+            const settingsWithIcons = savedSettings.map((setting: any) => ({
+              ...setting,
+              icon: getNotificationIcon(setting.id)
+            }));
+            setNotificationSettings(settingsWithIcons);
+          }
+
+          // Load schedules
+          const savedSchedules = await DataService.loadNotificationSchedules(user.id);
+          if (savedSchedules) {
+            setSchedules(savedSchedules);
+          }
+
+          // Load quiet hours
+          const savedQuietHours = await DataService.loadQuietHours(user.id);
+          if (savedQuietHours) {
+            setQuietHours(savedQuietHours);
+          }
+        } catch (error) {
+          console.error('Error loading notification data:', error);
+        }
+      }
+    };
+
+    loadSettings();
   }, [user?.id]);
 
-  // Save settings to localStorage
+  // Save settings to DataService (localStorage + Supabase)
   useEffect(() => {
-    if (user?.id) {
-      localStorage.setItem(`notificationSettings_${user?.id}`, JSON.stringify(notificationSettings));
-    }
-  }, [notificationSettings, user?.id]);
+    const saveSettings = async () => {
+      if (user?.id) {
+        try {
+          // Save notification settings
+          await DataService.saveNotificationSettings(user.id, notificationSettings);
+          
+          // Save schedules
+          await DataService.saveNotificationSchedules(user.id, schedules);
+          
+          // Save quiet hours
+          await DataService.saveQuietHours(user.id, quietHours);
+        } catch (error) {
+          console.error('Error saving notification data:', error);
+        }
+      }
+    };
+
+    // Debounce the save operation
+    const timeoutId = setTimeout(saveSettings, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [notificationSettings, schedules, quietHours, user?.id]);
 
   const toggleNotification = (id: string) => {
     setNotificationSettings(prev => 
@@ -390,7 +456,7 @@ export const BasicNotifications: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Desktop className="h-5 w-5 text-green-600" />
+              <Monitor className="h-5 w-5 text-green-600" />
               Desktop Notifications
             </CardTitle>
           </CardHeader>

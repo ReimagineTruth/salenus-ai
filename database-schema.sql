@@ -1,154 +1,227 @@
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Salenus A.I Database Schema
+-- This file contains all the required tables for the application
 
--- Users table
-CREATE TABLE IF NOT EXISTS users (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    plan VARCHAR(20) DEFAULT 'Free' CHECK (plan IN ('Free', 'Basic', 'Pro', 'Premium')),
+-- Enable Row Level Security (RLS)
+ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
+
+-- Create custom types
+CREATE TYPE user_plan AS ENUM ('Free', 'Basic', 'Pro', 'Premium');
+CREATE TYPE habit_category AS ENUM ('Health', 'Learning', 'Productivity', 'Fitness', 'Mindfulness', 'Finance', 'Social', 'Other');
+CREATE TYPE habit_difficulty AS ENUM ('Easy', 'Medium', 'Hard');
+CREATE TYPE habit_priority AS ENUM ('Low', 'Medium', 'High');
+CREATE TYPE task_status AS ENUM ('pending', 'in-progress', 'completed', 'cancelled');
+CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high');
+CREATE TYPE pi_session_type AS ENUM ('Mining', 'Trading', 'Staking', 'Other');
+
+-- Users table (extends Supabase auth.users)
+CREATE TABLE public.users (
+    id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    plan user_plan DEFAULT 'Free',
     plan_expiry TIMESTAMP WITH TIME ZONE,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    has_paid BOOLEAN DEFAULT false,
+    has_paid BOOLEAN DEFAULT FALSE,
     avatar_url TEXT,
-    auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Habits table
-CREATE TABLE IF NOT EXISTS habits (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    name VARCHAR(255) NOT NULL,
+CREATE TABLE public.habits (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
     description TEXT,
+    category habit_category DEFAULT 'Other',
+    daily_goal INTEGER DEFAULT 1,
+    current_count INTEGER DEFAULT 0,
     streak INTEGER DEFAULT 0,
-    total_days INTEGER DEFAULT 0,
-    completed_today BOOLEAN DEFAULT false,
-    goal INTEGER DEFAULT 1,
-    category VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_completed TIMESTAMP WITH TIME ZONE,
-    best_streak INTEGER DEFAULT 0,
-    weekly_progress INTEGER[] DEFAULT ARRAY[0,0,0,0,0,0,0],
-    monthly_progress INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-    yearly_progress INTEGER[] DEFAULT ARRAY[]::INTEGER[],
-    images TEXT[] DEFAULT ARRAY[]::TEXT[],
-    notes TEXT[] DEFAULT ARRAY[]::TEXT[],
+    longest_streak INTEGER DEFAULT 0,
+    difficulty habit_difficulty DEFAULT 'Medium',
+    priority habit_priority DEFAULT 'Medium',
+    reminder_enabled BOOLEAN DEFAULT FALSE,
     reminder_time TIME,
-    reminder_enabled BOOLEAN DEFAULT true,
-    difficulty VARCHAR(20) DEFAULT 'Medium' CHECK (difficulty IN ('Easy', 'Medium', 'Hard')),
-    priority VARCHAR(20) DEFAULT 'Medium' CHECK (priority IN ('Low', 'Medium', 'High')),
-    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
-    milestones JSONB DEFAULT '[]'::jsonb
+    tags TEXT[],
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habit completions table (for tracking daily completions)
+CREATE TABLE public.habit_completions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    habit_id UUID REFERENCES public.habits(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    completed_date DATE NOT NULL,
+    count INTEGER DEFAULT 1,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(habit_id, completed_date)
 );
 
 -- Tasks table
-CREATE TABLE IF NOT EXISTS tasks (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    title VARCHAR(255) NOT NULL,
+CREATE TABLE public.tasks (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
     description TEXT,
-    completed BOOLEAN DEFAULT false,
-    priority VARCHAR(20) DEFAULT 'Medium' CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
-    status VARCHAR(20) DEFAULT 'Todo' CHECK (status IN ('Todo', 'In Progress', 'Review', 'Done')),
-    category VARCHAR(50) NOT NULL,
+    status task_status DEFAULT 'pending',
+    priority task_priority DEFAULT 'medium',
     due_date TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    completed_at TIMESTAMP WITH TIME ZONE,
+    category TEXT,
+    tags TEXT[],
     estimated_time INTEGER, -- in minutes
     actual_time INTEGER, -- in minutes
-    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
-    attachments TEXT[] DEFAULT ARRAY[]::TEXT[],
-    notes TEXT[] DEFAULT ARRAY[]::TEXT[],
-    assignee VARCHAR(255),
-    reminder_time TIME,
-    reminder_enabled BOOLEAN DEFAULT true,
-    recurring VARCHAR(20) DEFAULT 'None' CHECK (recurring IN ('Daily', 'Weekly', 'Monthly', 'None')),
-    subtasks JSONB DEFAULT '[]'::jsonb,
-    time_spent INTEGER DEFAULT 0, -- in minutes
-    last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_pattern TEXT, -- cron-like pattern
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Habit notes table
-CREATE TABLE IF NOT EXISTS habit_notes (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    habit_id UUID REFERENCES habits(id) ON DELETE CASCADE NOT NULL,
-    content TEXT NOT NULL,
-    date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    mood INTEGER CHECK (mood >= 1 AND mood <= 10),
-    energy INTEGER CHECK (energy >= 1 AND energy <= 10),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Pi Network sessions table
+CREATE TABLE public.pi_sessions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    session_type pi_session_type NOT NULL,
+    duration INTEGER NOT NULL, -- in minutes
+    pi_earned DECIMAL(10,4) DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    notes TEXT,
+    session_date DATE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Task notes table
-CREATE TABLE IF NOT EXISTS task_notes (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    task_id UUID REFERENCES tasks(id) ON DELETE CASCADE NOT NULL,
-    content TEXT NOT NULL,
-    date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    type VARCHAR(20) DEFAULT 'note' CHECK (type IN ('note', 'comment', 'update')),
-    author VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+-- Challenges table
+CREATE TABLE public.challenges (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    difficulty TEXT,
+    target_value INTEGER,
+    current_value INTEGER DEFAULT 0,
+    start_date DATE NOT NULL,
+    end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- User settings table
+CREATE TABLE public.user_settings (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+    notifications_email BOOLEAN DEFAULT TRUE,
+    notifications_push BOOLEAN DEFAULT TRUE,
+    notifications_sms BOOLEAN DEFAULT FALSE,
+    privacy_profile_public BOOLEAN DEFAULT FALSE,
+    privacy_share_progress BOOLEAN DEFAULT TRUE,
+    privacy_allow_analytics BOOLEAN DEFAULT TRUE,
+    theme TEXT DEFAULT 'light',
+    timezone TEXT DEFAULT 'UTC',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Notifications table
-CREATE TABLE IF NOT EXISTS notifications (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    title VARCHAR(255) NOT NULL,
+CREATE TABLE public.notifications (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
     message TEXT NOT NULL,
-    type VARCHAR(20) DEFAULT 'system' CHECK (type IN ('habit', 'task', 'reminder', 'system')),
-    read BOOLEAN DEFAULT false,
+    type TEXT NOT NULL, -- 'reminder', 'achievement', 'challenge', 'system'
+    is_read BOOLEAN DEFAULT FALSE,
+    data JSONB, -- additional data for the notification
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- User sessions table for tracking active sessions
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    session_token VARCHAR(255) UNIQUE NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+-- Analytics/Stats table
+CREATE TABLE public.user_stats (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+    total_habits INTEGER DEFAULT 0,
+    completed_habits INTEGER DEFAULT 0,
+    total_tasks INTEGER DEFAULT 0,
+    completed_tasks INTEGER DEFAULT 0,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    total_pi_earned DECIMAL(10,4) DEFAULT 0,
+    total_sessions INTEGER DEFAULT 0,
+    last_activity TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Analytics table for tracking user behavior
-CREATE TABLE IF NOT EXISTS analytics (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    event_type VARCHAR(50) NOT NULL,
-    event_data JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id);
-CREATE INDEX IF NOT EXISTS idx_habits_category ON habits(category);
-CREATE INDEX IF NOT EXISTS idx_habits_completed_today ON habits(completed_today);
+CREATE INDEX idx_habits_user_id ON public.habits(user_id);
+CREATE INDEX idx_habits_created_at ON public.habits(created_at DESC);
+CREATE INDEX idx_habit_completions_habit_id ON public.habit_completions(habit_id);
+CREATE INDEX idx_habit_completions_date ON public.habit_completions(completed_date);
+CREATE INDEX idx_tasks_user_id ON public.tasks(user_id);
+CREATE INDEX idx_tasks_status ON public.tasks(status);
+CREATE INDEX idx_tasks_due_date ON public.tasks(due_date);
+CREATE INDEX idx_pi_sessions_user_id ON public.pi_sessions(user_id);
+CREATE INDEX idx_pi_sessions_date ON public.pi_sessions(session_date);
+CREATE INDEX idx_notifications_user_id ON public.notifications(user_id);
+CREATE INDEX idx_notifications_read ON public.notifications(is_read);
 
-CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
-CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
-CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
-CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.habits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.habit_completions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pi_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_stats ENABLE ROW LEVEL SECURITY;
 
-CREATE INDEX IF NOT EXISTS idx_habit_notes_habit_id ON habit_notes(habit_id);
-CREATE INDEX IF NOT EXISTS idx_task_notes_task_id ON task_notes(task_id);
+-- Create RLS policies
+-- Users can only access their own data
+CREATE POLICY "Users can view own profile" ON public.users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
-CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+CREATE POLICY "Users can view own habits" ON public.habits FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own habits" ON public.habits FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own habits" ON public.habits FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own habits" ON public.habits FOR DELETE USING (auth.uid() = user_id);
 
-CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
+CREATE POLICY "Users can view own habit completions" ON public.habit_completions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own habit completions" ON public.habit_completions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own habit completions" ON public.habit_completions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own habit completions" ON public.habit_completions FOR DELETE USING (auth.uid() = user_id);
 
-CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics(user_id);
-CREATE INDEX IF NOT EXISTS idx_analytics_event_type ON analytics(event_type);
-CREATE INDEX IF NOT EXISTS idx_analytics_created_at ON analytics(created_at);
+CREATE POLICY "Users can view own tasks" ON public.tasks FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own tasks" ON public.tasks FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own tasks" ON public.tasks FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own tasks" ON public.tasks FOR DELETE USING (auth.uid() = user_id);
 
--- Create updated_at trigger function
+CREATE POLICY "Users can view own pi sessions" ON public.pi_sessions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own pi sessions" ON public.pi_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own pi sessions" ON public.pi_sessions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own pi sessions" ON public.pi_sessions FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own challenges" ON public.challenges FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own challenges" ON public.challenges FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own challenges" ON public.challenges FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own challenges" ON public.challenges FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own settings" ON public.user_settings FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own settings" ON public.user_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own settings" ON public.user_settings FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own notifications" ON public.notifications FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own notifications" ON public.notifications FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own stats" ON public.user_stats FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own stats" ON public.user_stats FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own stats" ON public.user_stats FOR UPDATE USING (auth.uid() = user_id);
+
+-- Create functions for automatic updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -158,109 +231,38 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_tasks_last_updated BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_habits_updated_at BEFORE UPDATE ON public.habits FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON public.tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_pi_sessions_updated_at BEFORE UPDATE ON public.pi_sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_challenges_updated_at BEFORE UPDATE ON public.challenges FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_settings_updated_at BEFORE UPDATE ON public.user_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_stats_updated_at BEFORE UPDATE ON public.user_stats FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Create function to reset daily habit completion
-CREATE OR REPLACE FUNCTION reset_daily_habits()
-RETURNS void AS $$
+-- Function to create user profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
 BEGIN
-    UPDATE habits 
-    SET completed_today = false 
-    WHERE DATE(created_at) < CURRENT_DATE;
+    INSERT INTO public.users (id, email, name, plan, has_paid)
+    VALUES (NEW.id, NEW.email, NEW.raw_user_meta_data->>'name', 'Free', FALSE);
+    
+    INSERT INTO public.user_settings (user_id)
+    VALUES (NEW.id);
+    
+    INSERT INTO public.user_stats (user_id)
+    VALUES (NEW.id);
+    
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create function to check for overdue tasks
-CREATE OR REPLACE FUNCTION check_overdue_tasks()
-RETURNS TABLE(task_id UUID, user_id UUID, title VARCHAR) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT t.id, t.user_id, t.title
-    FROM tasks t
-    WHERE t.due_date < NOW() 
-    AND t.completed = false 
-    AND t.status != 'Done';
-END;
-$$ LANGUAGE plpgsql;
+-- Trigger to create user profile on signup
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Enable Row Level Security (RLS)
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE habit_notes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE task_notes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE analytics ENABLE ROW LEVEL SECURITY;
-
--- Create RLS policies
--- Users can only access their own data
-CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid()::text = id::text);
-CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid()::text = id::text);
-CREATE POLICY "Users can insert own profile" ON users FOR INSERT WITH CHECK (auth.uid()::text = id::text);
-
--- Habits policies
-CREATE POLICY "Users can view own habits" ON habits FOR SELECT USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can insert own habits" ON habits FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can update own habits" ON habits FOR UPDATE USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can delete own habits" ON habits FOR DELETE USING (auth.uid()::text = user_id::text);
-
--- Tasks policies
-CREATE POLICY "Users can view own tasks" ON tasks FOR SELECT USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can insert own tasks" ON tasks FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can update own tasks" ON tasks FOR UPDATE USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can delete own tasks" ON tasks FOR DELETE USING (auth.uid()::text = user_id::text);
-
--- Habit notes policies
-CREATE POLICY "Users can view own habit notes" ON habit_notes FOR SELECT USING (
-    EXISTS (SELECT 1 FROM habits h WHERE h.id = habit_notes.habit_id AND h.user_id::text = auth.uid()::text)
-);
-CREATE POLICY "Users can insert own habit notes" ON habit_notes FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM habits h WHERE h.id = habit_notes.habit_id AND h.user_id::text = auth.uid()::text)
-);
-CREATE POLICY "Users can update own habit notes" ON habit_notes FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM habits h WHERE h.id = habit_notes.habit_id AND h.user_id::text = auth.uid()::text)
-);
-CREATE POLICY "Users can delete own habit notes" ON habit_notes FOR DELETE USING (
-    EXISTS (SELECT 1 FROM habits h WHERE h.id = habit_notes.habit_id AND h.user_id::text = auth.uid()::text)
-);
-
--- Task notes policies
-CREATE POLICY "Users can view own task notes" ON task_notes FOR SELECT USING (
-    EXISTS (SELECT 1 FROM tasks t WHERE t.id = task_notes.task_id AND t.user_id::text = auth.uid()::text)
-);
-CREATE POLICY "Users can insert own task notes" ON task_notes FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM tasks t WHERE t.id = task_notes.task_id AND t.user_id::text = auth.uid()::text)
-);
-CREATE POLICY "Users can update own task notes" ON task_notes FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM tasks t WHERE t.id = task_notes.task_id AND t.user_id::text = auth.uid()::text)
-);
-CREATE POLICY "Users can delete own task notes" ON task_notes FOR DELETE USING (
-    EXISTS (SELECT 1 FROM tasks t WHERE t.id = task_notes.task_id AND t.user_id::text = auth.uid()::text)
-);
-
--- Notifications policies
-CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can insert own notifications" ON notifications FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can update own notifications" ON notifications FOR UPDATE USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can delete own notifications" ON notifications FOR DELETE USING (auth.uid()::text = user_id::text);
-
--- User sessions policies
-CREATE POLICY "Users can view own sessions" ON user_sessions FOR SELECT USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can insert own sessions" ON user_sessions FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can update own sessions" ON user_sessions FOR UPDATE USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can delete own sessions" ON user_sessions FOR DELETE USING (auth.uid()::text = user_id::text);
-
--- Analytics policies
-CREATE POLICY "Users can view own analytics" ON analytics FOR SELECT USING (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can insert own analytics" ON analytics FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
-
--- Create realtime subscriptions
--- Enable realtime for all tables
-ALTER PUBLICATION supabase_realtime ADD TABLE users;
-ALTER PUBLICATION supabase_realtime ADD TABLE habits;
-ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE habit_notes;
-ALTER PUBLICATION supabase_realtime ADD TABLE task_notes;
-ALTER PUBLICATION supabase_realtime ADD TABLE notifications; 
+-- Grant necessary permissions
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated; 

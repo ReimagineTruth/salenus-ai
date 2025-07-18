@@ -11,7 +11,7 @@ import {
   Heart, 
   BarChart3, 
   Calendar,
-  Lock,
+  Key,
   ArrowUp,
   TrendingUp,
   Activity,
@@ -173,7 +173,7 @@ export const MoodTracker: React.FC = () => {
       <Card className="border-slate-200">
         <CardContent className="pt-6">
           <div className="text-center">
-            <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-600 mb-2">Mood Tracking</h3>
             <p className="text-slate-500 mb-4">
               Track your daily mood and energy levels to understand your patterns and get personalized recommendations.

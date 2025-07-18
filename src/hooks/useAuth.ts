@@ -22,46 +22,105 @@ export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [authUser, setAuthUser] = useState<User | null>(null);
 
+  // Mock authentication for testing
+  const useMockAuth = false; // Set to false to use real authentication
+
   // Initialize auth state
   useEffect(() => {
+    try {
+      if (useMockAuth) {
+        console.log('useAuth: Using MOCK authentication for testing');
+        
+        // Create a mock user for testing
+        const mockUser: AppUser = {
+          id: 'mock-user-id',
+          email: 'test@salenus.ai',
+          name: 'Test User',
+          plan: 'Premium' as UserPlan,
+          planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          hasPaid: true,
+          avatarUrl: undefined
+        };
+        
+        console.log('useAuth: Setting mock user:', mockUser);
+        setUser(mockUser);
+        setAuthUser({ id: 'mock-auth-id', email: 'test@salenus.ai' } as User);
+        
+        // Add a small delay to ensure the user is set
+        setTimeout(() => {
+          console.log('useAuth: Mock user should now be available');
+          console.log('useAuth: Current user state:', user);
+        }, 100);
+        
+        return;
+      }
+
+    console.log('useAuth: Initializing authentication...');
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('useAuth: Initial session check:', session);
       setAuthUser(session?.user ?? null);
       if (session?.user) {
+        console.log('useAuth: User found in session, loading data...');
         loadUserData(session.user.id);
+      } else {
+        console.log('useAuth: No user in session');
       }
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('useAuth: Auth state change:', event, session?.user?.email);
         setAuthUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN' && session?.user) {
+          console.log('useAuth: User signed in, loading data...');
           await loadUserData(session.user.id);
         } else if (event === 'SIGNED_OUT') {
+          console.log('useAuth: User signed out');
           setUser(null);
         }
       }
     );
 
     return () => subscription.unsubscribe();
+    } catch (error) {
+      console.error('useAuth: Error initializing authentication:', error);
+      // Set a fallback user to prevent white screen
+      const fallbackUser: AppUser = {
+        id: 'fallback-user-id',
+        email: 'fallback@salenus.ai',
+        name: 'Fallback User',
+        plan: 'Free' as UserPlan,
+        planExpiry: null,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        hasPaid: false,
+        avatarUrl: undefined
+      };
+      setUser(fallbackUser);
+      setAuthUser({ id: 'fallback-auth-id', email: 'fallback@salenus.ai' } as User);
+    }
   }, []);
 
   const loadUserData = async (authUserId: string) => {
     try {
-      console.log('Loading user data for authUserId:', authUserId);
+      console.log('loadUserData: Starting to load user data for authUserId:', authUserId);
       
       // Check if user exists in our database
       let appUser = await SupabaseService.getUser(authUserId);
-      console.log('Retrieved user from database:', appUser);
+      console.log('loadUserData: Retrieved user from database:', appUser);
       
       if (!appUser) {
-        console.log('User not found in database, creating new user...');
+        console.log('loadUserData: User not found in database, creating new user...');
         // Create new user if they don't exist
         const authUser = await supabase.auth.getUser();
         if (authUser.data.user) {
-          console.log('Creating new user with data:', {
+          console.log('loadUserData: Creating new user with data:', {
             email: authUser.data.user.email,
             name: authUser.data.user.user_metadata?.full_name || authUser.data.user.email!.split('@')[0],
             plan: 'Free',
@@ -74,7 +133,7 @@ export const useAuth = () => {
             plan: 'Free',
             authUserId: authUserId
           });
-          console.log('Created new user:', appUser);
+          console.log('loadUserData: Created new user:', appUser);
         }
       }
 
@@ -91,13 +150,13 @@ export const useAuth = () => {
           avatarUrl: appUser.avatar_url || undefined
         };
         
-        console.log('Setting user state with data:', userData);
+        console.log('loadUserData: Setting user state with data:', userData);
         setUser(userData);
       } else {
-        console.error('Failed to load or create user data');
+        console.error('loadUserData: Failed to load or create user data');
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('loadUserData: Error loading user data:', error);
     }
   };
 
@@ -106,13 +165,40 @@ export const useAuth = () => {
     setIsLoading(true);
     
     try {
+      if (useMockAuth) {
+        console.log('useAuth: Mock registration for:', email);
+        
+        // Create mock user
+        const mockUser: AppUser = {
+          id: 'mock-user-' + Date.now(),
+          email,
+          name,
+          plan,
+          planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          hasPaid: plan !== 'Free',
+          avatarUrl: undefined
+        };
+        
+        setUser(mockUser);
+        setAuthUser({ id: mockUser.id, email } as User);
+        
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return { id: mockUser.id, email } as User;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: name
-          }
+          },
+          emailRedirectTo: null,
+          // Disable email confirmation - user will be automatically confirmed
         }
       });
 
@@ -139,6 +225,31 @@ export const useAuth = () => {
     setIsLoading(true);
     
     try {
+      if (useMockAuth) {
+        console.log('useAuth: Mock login for:', email);
+        
+        // Create mock user for login
+        const mockUser: AppUser = {
+          id: 'mock-user-' + Date.now(),
+          email,
+          name: email.split('@')[0],
+          plan: 'Premium' as UserPlan,
+          planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          hasPaid: true,
+          avatarUrl: undefined
+        };
+        
+        setUser(mockUser);
+        setAuthUser({ id: mockUser.id, email } as User);
+        
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return { id: mockUser.id, email } as User;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -160,12 +271,27 @@ export const useAuth = () => {
   // Sign out
   const logout = async () => {
     try {
+      console.log('useAuth: Starting logout...');
+      console.log('useAuth: useMockAuth:', useMockAuth);
+      console.log('useAuth: Current user before logout:', user);
+      
+      if (useMockAuth) {
+        console.log('useAuth: Mock logout - clearing user state');
+        setUser(null);
+        setAuthUser(null);
+        console.log('useAuth: Mock logout completed');
+        return;
+      }
+
+      console.log('useAuth: Real logout - calling Supabase signOut');
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Logout error:', error);
+        console.error('useAuth: Logout error:', error);
+      } else {
+        console.log('useAuth: Real logout completed');
       }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('useAuth: Logout error:', error);
     }
   };
 
@@ -176,6 +302,25 @@ export const useAuth = () => {
     setIsLoading(true);
     
     try {
+      if (useMockAuth) {
+        console.log('useAuth: Mock plan upgrade to:', newPlan);
+        
+        // Update mock user plan
+        const updatedUser = {
+          ...user,
+          plan: newPlan,
+          hasPaid: true,
+          planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        };
+        
+        setUser(updatedUser);
+        
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return updatedUser;
+      }
+
       const planExpiry = new Date();
       planExpiry.setDate(planExpiry.getDate() + 30); // 30 days from now
 
@@ -197,6 +342,61 @@ export const useAuth = () => {
       return updatedUser;
     } catch (error) {
       console.error('Upgrade plan error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Downgrade plan
+  const downgradePlan = async (newPlan: UserPlan) => {
+    if (!user) return null;
+    
+    setIsLoading(true);
+    
+    try {
+      if (useMockAuth) {
+        console.log('useAuth: Mock plan downgrade to:', newPlan);
+        
+        // Update mock user plan
+        const updatedUser = {
+          ...user,
+          plan: newPlan,
+          hasPaid: newPlan !== 'Free',
+          planExpiry: newPlan === 'Free' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        };
+        
+        setUser(updatedUser);
+        
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        return updatedUser;
+      }
+
+      const planExpiry = newPlan === 'Free' ? null : new Date();
+      if (planExpiry) {
+        planExpiry.setDate(planExpiry.getDate() + 30); // 30 days from now
+      }
+
+      const updatedUser = await SupabaseService.updateUser(user.id, {
+        plan: newPlan,
+        has_paid: newPlan !== 'Free',
+        plan_expiry: planExpiry?.toISOString() || null
+      });
+
+      if (updatedUser) {
+        setUser({
+          ...user,
+          plan: updatedUser.plan as UserPlan,
+          planExpiry: updatedUser.plan_expiry ? new Date(updatedUser.plan_expiry) : null,
+          hasPaid: updatedUser.has_paid
+        });
+      }
+
+      return updatedUser;
+    } catch (error) {
+      console.error('Downgrade plan error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -346,6 +546,7 @@ export const useAuth = () => {
     login,
     logout,
     upgradePlan,
+    downgradePlan,
     hasFeature,
     getPlanFeatures,
     checkPlanStatus,

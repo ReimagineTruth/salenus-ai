@@ -27,8 +27,71 @@ import { APIAccess } from '@/components/features/APIAccess';
 import { WhiteLabel } from '@/components/features/WhiteLabel';
 import { useAuth, UserPlan } from '@/hooks/useAuth';
 import { FeatureCard } from '@/components/FeatureCard';
-import { FeatureLoader } from '@/components/ui/Loader';
-import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Heart, Sparkles, Star, Camera, Trophy, BookOpen, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Lock, Search, Plus, Home, Menu, X, ChevronLeft, ChevronRight, RefreshCw, Settings as SettingsIcon, User, LogOut, HelpCircle, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Download, Upload, Trash2, Key, Crown, Zap } from 'lucide-react';
+import { FeatureLoader, Loader } from '@/components/ui/Loader';
+import { 
+  BarChart3, 
+  ClipboardList, 
+  Users, 
+  Cloud, 
+  Smartphone, 
+  Bell, 
+  Heart, 
+  Sparkles, 
+  Star, 
+  Camera, 
+  Trophy, 
+  BookOpen, 
+  Flame, 
+  MessageSquare, 
+  PieChart, 
+  Calendar, 
+  Shield, 
+  Lightbulb, 
+  GraduationCap, 
+  Globe, 
+  Settings, 
+  Search, 
+  Plus, 
+  Home, 
+  Menu, 
+  X, 
+  ChevronLeft, 
+  ChevronRight, 
+  RefreshCw, 
+  Settings as SettingsIcon, 
+  User, 
+  LogOut, 
+  HelpCircle, 
+  Keyboard, 
+  MousePointer, 
+  Monitor, 
+  Smartphone as MobileIcon, 
+  Download, 
+  Upload, 
+  Trash2, 
+  Key, 
+  Crown, 
+  Zap, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  Smartphone as PhoneIcon,
+  Database,
+  FileText,
+  HardDrive,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Archive,
+  RotateCcw,
+  Copy,
+  ExternalLink,
+  ArrowDown,
+  ChevronUp,
+  ChevronDown
+} from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { PanelLeft } from 'lucide-react';
@@ -41,6 +104,32 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { MobileLayout } from '@/components/MobileLayout';
 import { MobileHabitTracker } from '@/components/mobile/MobileHabitTracker';
 import { MobileTaskManager } from '@/components/mobile/MobileTaskManager';
+import { MobileSidebar } from '@/components/mobile/MobileSidebar';
+import { MobileFooterNavigation } from '@/components/MobileFooterNavigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+// Simple Fallback Component
+const DashboardFallback: React.FC = () => {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">Dashboard Error</h1>
+        <p className="text-gray-600 mb-4">There was an error loading the dashboard. Please try refreshing the page.</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const allFeatures = [
   // Free
@@ -80,7 +169,7 @@ interface UserDashboardProps {
 }
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, onUpgrade }) => {
-  const { upgradePlan, isLoading, hasFeature } = useAuth();
+  const { upgradePlan, downgradePlan, isLoading, hasFeature, getPlanFeatures } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const location = useLocation();
@@ -94,6 +183,13 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
   const [showSearch, setShowSearch] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = React.useState(false);
+
+  // Debug logging
+  console.log('UserDashboard rendered with user:', user);
+  console.log('UserDashboard location:', location.pathname);
+  console.log('UserDashboard isMobile:', isMobile);
+  console.log('UserDashboard drawerOpen:', drawerOpen);
+  console.log('UserDashboard window width:', window.innerWidth);
 
   // Add state to track which feature is active in overview
   const [activeFeature, setActiveFeature] = React.useState(() => {
@@ -141,9 +237,42 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
   const [showCancellationModal, setShowCancellationModal] = React.useState(false);
   const [cancellationReason, setCancellationReason] = React.useState('');
 
+  // Add data management state
+  const [showDataManagementModal, setShowDataManagementModal] = React.useState(false);
+  const [dataManagementAction, setDataManagementAction] = React.useState<'export' | 'import' | 'backup' | 'reset' | null>(null);
+  const [isDataActionLoading, setIsDataActionLoading] = React.useState(false);
+  const [dataManagementStatus, setDataManagementStatus] = React.useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
+
+  // Add confirmation dialog state
+  const [showResetConfirmation, setShowResetConfirmation] = React.useState(false);
+  const [resetConfirmationText, setResetConfirmationText] = React.useState('');
+  const [showDataManagement, setShowDataManagement] = React.useState(false);
+
   React.useEffect(() => {
     localStorage.setItem('dashboardTab', activeTab);
   }, [activeTab]);
+
+  // Show welcome message when dashboard loads
+  React.useEffect(() => {
+    if (user) {
+      // Check if this is a fresh login (you could use a flag or timestamp)
+      const lastLogin = localStorage.getItem('lastLogin');
+      const now = new Date().toISOString();
+      
+      // Show welcome message if it's been more than 5 minutes since last login
+      if (!lastLogin || (new Date(now).getTime() - new Date(lastLogin).getTime()) > 5 * 60 * 1000) {
+        toast({
+          title: "Welcome to your dashboard! 🎉",
+          description: `Hello ${user.name || user.email?.split('@')[0]}, ready to continue your journey with Salenus A.I?`,
+          duration: 4000,
+        });
+        localStorage.setItem('lastLogin', now);
+      }
+    }
+  }, [user]);
 
   // Debug logging
   console.log('UserDashboard - User data:', user);
@@ -160,12 +289,74 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
   // Define payment handlers early to avoid hoisting issues
   const handlePay = async () => {
     if (!selectedPlan) return;
-    await upgradePlan(selectedPlan as UserPlan);
-    setPaymentOpen(false);
+    
+    // Show processing toast
+    toast({
+      title: "Processing Upgrade...",
+      description: `Upgrading to ${selectedPlan} plan...`,
+      duration: 2000,
+    });
+    
+    try {
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock payment success - update user plan
+      await upgradePlan(selectedPlan as UserPlan);
+      
+      // Show success message with more details
+      toast({
+        title: "Upgrade Successful! 🎉",
+        description: `Welcome to the ${selectedPlan} plan! You now have access to all premium features including ${getPlanFeatures(selectedPlan as UserPlan).slice(0, 3).join(', ')} and more!`,
+        duration: 6000,
+      });
+      
+      // Show additional welcome message
+      setTimeout(() => {
+        toast({
+          title: "🎯 Getting Started",
+          description: "Explore your new features in the dashboard. Try the habit tracker, task manager, or community challenges!",
+          duration: 5000,
+        });
+      }, 2000);
+      
+      setPaymentOpen(false);
+    } catch (error) {
+      console.error('Mock payment error:', error);
+      toast({
+        title: "Upgrade Error",
+        description: "There was an error processing your upgrade. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleChangePlan = () => {
     setPaymentOpen(false);
+  };
+
+  const handleDowngrade = async (newPlan: UserPlan) => {
+    setFeatureLoading(true);
+    try {
+      await downgradePlan(newPlan);
+      setPaymentOpen(false);
+      setSelectedPlan(null);
+      
+      toast({
+        title: "Plan Downgraded",
+        description: `Your plan has been changed to ${newPlan}. Some features may no longer be available.`,
+        duration: 4000,
+      });
+    } catch (error) {
+      console.error('Downgrade error:', error);
+      toast({
+        title: "Downgrade Error",
+        description: "There was an error processing your plan change. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setFeatureLoading(false);
+    }
   };
 
   // Add cancellation handler
@@ -249,10 +440,374 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     return () => document.removeEventListener('keydown', handleKeyboardShortcuts);
   }, [drawerOpen, showSearch, showSettings]);
 
-  const handleSignOut = () => {
-    if (onLogout) {
-      onLogout();
+  const handleSignOut = async () => {
+    try {
+      console.log('UserDashboard: Starting sign out process...');
+      console.log('UserDashboard: onLogout prop exists:', !!onLogout);
+      
+      // Clear any stored data first
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('userSession');
+      
+      // Call the logout handler from props
+      if (onLogout) {
+        console.log('UserDashboard: Calling onLogout prop...');
+        await onLogout();
+        console.log('UserDashboard: onLogout completed');
+      } else {
+        // Fallback logout - clear user state and redirect
+        console.log('UserDashboard: Using fallback logout...');
+        
+        // Clear user data from localStorage
+        const keysToRemove = [
+          'habits', 'tasks', 'piRewards', 'userProfile', 
+          'currentUser', 'userSession', 'authToken'
+        ];
+        
+        keysToRemove.forEach(key => {
+          if (localStorage.getItem(key)) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Force redirect to home page
+        console.log('UserDashboard: Redirecting to home...');
+        window.location.href = '/';
+      }
+      
+      console.log('UserDashboard: Sign out completed');
+    } catch (error) {
+      console.error('UserDashboard: Sign out error:', error);
+      // Force redirect even if there's an error
+      console.log('UserDashboard: Force redirect due to error...');
+      window.location.href = '/';
     }
+  };
+
+  // Data Management Functions
+  const handleExportData = async () => {
+    setIsDataActionLoading(true);
+    setDataManagementStatus(null);
+    
+    try {
+      // Collect all user data
+      const userData = {
+        habits: JSON.parse(localStorage.getItem('habits') || '[]'),
+        tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+        piRewards: JSON.parse(localStorage.getItem('piRewards') || '[]'),
+        userProfile: {
+          name: user?.name,
+          email: user?.email,
+          plan: user?.plan,
+          settings: profileData
+        },
+        exportDate: new Date().toISOString(),
+        version: '1.0.0'
+      };
+
+      // Create and download file
+      const dataStr = JSON.stringify(userData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `salenus-ai-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setDataManagementStatus({
+        type: 'success',
+        message: 'Data exported successfully!'
+      });
+      
+      toast({
+        title: "Export Complete",
+        description: "Your data has been exported successfully.",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      setDataManagementStatus({
+        type: 'error',
+        message: 'Failed to export data. Please try again.'
+      });
+      
+      toast({
+        title: "Export Failed",
+        description: "There was an error exporting your data.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDataActionLoading(false);
+    }
+  };
+
+  const handleImportData = async (file: File) => {
+    setIsDataActionLoading(true);
+    setDataManagementStatus(null);
+    
+    try {
+      const text = await file.text();
+      const importedData = JSON.parse(text);
+      
+      // Validate imported data structure
+      if (!importedData.habits || !importedData.tasks || !importedData.piRewards) {
+        throw new Error('Invalid backup file format');
+      }
+
+      // Import data to localStorage
+      localStorage.setItem('habits', JSON.stringify(importedData.habits));
+      localStorage.setItem('tasks', JSON.stringify(importedData.tasks));
+      localStorage.setItem('piRewards', JSON.stringify(importedData.piRewards));
+      
+      // Update profile data if available
+      if (importedData.userProfile?.settings) {
+        setProfileData(importedData.userProfile.settings);
+      }
+
+      setDataManagementStatus({
+        type: 'success',
+        message: `Data imported successfully! ${importedData.habits.length} habits, ${importedData.tasks.length} tasks, and ${importedData.piRewards.length} Pi rewards imported.`
+      });
+      
+      toast({
+        title: "Import Complete",
+        description: "Your data has been imported successfully.",
+      });
+    } catch (error) {
+      console.error('Import error:', error);
+      setDataManagementStatus({
+        type: 'error',
+        message: 'Failed to import data. Please check the file format.'
+      });
+      
+      toast({
+        title: "Import Failed",
+        description: "There was an error importing your data. Please check the file format.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDataActionLoading(false);
+    }
+  };
+
+  const handleBackupData = async () => {
+    setIsDataActionLoading(true);
+    setDataManagementStatus(null);
+    
+    try {
+      // Create backup with timestamp
+      const backupData = {
+        habits: JSON.parse(localStorage.getItem('habits') || '[]'),
+        tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+        piRewards: JSON.parse(localStorage.getItem('piRewards') || '[]'),
+        userProfile: {
+          name: user?.name,
+          email: user?.email,
+          plan: user?.plan,
+          settings: profileData
+        },
+        backupDate: new Date().toISOString(),
+        version: '1.0.0'
+      };
+
+      // Store backup in localStorage
+      const backupKey = `backup_${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+      localStorage.setItem(backupKey, JSON.stringify(backupData));
+      
+      // Keep only last 5 backups
+      const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('backup_'));
+      if (backupKeys.length > 5) {
+        backupKeys.sort().slice(0, -5).forEach(key => localStorage.removeItem(key));
+      }
+
+      setDataManagementStatus({
+        type: 'success',
+        message: 'Backup created successfully!'
+      });
+      
+      toast({
+        title: "Backup Complete",
+        description: "Your data has been backed up successfully.",
+      });
+    } catch (error) {
+      console.error('Backup error:', error);
+      setDataManagementStatus({
+        type: 'error',
+        message: 'Failed to create backup. Please try again.'
+      });
+      
+      toast({
+        title: "Backup Failed",
+        description: "There was an error creating the backup.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDataActionLoading(false);
+    }
+  };
+
+  const handleResetData = async () => {
+    setIsDataActionLoading(true);
+    setDataManagementStatus(null);
+    
+    try {
+      // Clear all data
+      localStorage.removeItem('habits');
+      localStorage.removeItem('tasks');
+      localStorage.removeItem('piRewards');
+      
+      // Clear backup data
+      const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('backup_'));
+      backupKeys.forEach(key => localStorage.removeItem(key));
+
+      setDataManagementStatus({
+        type: 'success',
+        message: 'All data has been reset successfully!'
+      });
+      
+      toast({
+        title: "Reset Complete",
+        description: "All your data has been reset successfully.",
+      });
+    } catch (error) {
+      console.error('Reset error:', error);
+      setDataManagementStatus({
+        type: 'error',
+        message: 'Failed to reset data. Please try again.'
+      });
+      
+      toast({
+        title: "Reset Failed",
+        description: "There was an error resetting your data.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDataActionLoading(false);
+      setShowResetConfirmation(false);
+    }
+  };
+
+  // Function to trigger reset confirmation
+  const triggerResetConfirmation = () => {
+    const stats = getDataStats();
+    const confirmationMessage = `This will permanently delete:
+• ${stats.habits} habits
+• ${stats.tasks} tasks  
+• ${stats.piRewards} Pi rewards
+• ${stats.backups} backups
+
+This action cannot be undone. Are you sure you want to continue?`;
+    
+    setResetConfirmationText(confirmationMessage);
+    setShowResetConfirmation(true);
+  };
+
+  const getDataStats = () => {
+    const habits = JSON.parse(localStorage.getItem('habits') || '[]');
+    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    const piRewards = JSON.parse(localStorage.getItem('piRewards') || '[]');
+    const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('backup_'));
+    
+    return {
+      habits: habits.length,
+      tasks: tasks.length,
+      piRewards: piRewards.length,
+      backups: backupKeys.length,
+      totalSize: new Blob([
+        JSON.stringify(habits),
+        JSON.stringify(tasks),
+        JSON.stringify(piRewards)
+      ]).size
+    };
+  };
+
+  // Create demo data for testing
+  const createDemoData = () => {
+    const demoHabits = [
+      {
+        id: '1',
+        name: 'Morning Exercise',
+        category: 'Health',
+        streak: 5,
+        completed: false,
+        target: 1,
+        current: 0,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '2',
+        name: 'Read 30 minutes',
+        category: 'Learning',
+        streak: 3,
+        completed: false,
+        target: 1,
+        current: 0,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '3',
+        name: 'Drink 8 glasses of water',
+        category: 'Health',
+        streak: 7,
+        completed: false,
+        target: 8,
+        current: 0,
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    const demoTasks = [
+      {
+        id: '1',
+        title: 'Complete project proposal',
+        description: 'Finish the quarterly project proposal document',
+        priority: 'high',
+        status: 'pending',
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+        category: 'Work',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '2',
+        title: 'Grocery shopping',
+        description: 'Buy groceries for the week',
+        priority: 'medium',
+        status: 'pending',
+        dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+        category: 'Personal',
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    const demoPiRewards = [
+      {
+        id: '1',
+        sessionType: 'Mining',
+        duration: 30,
+        piEarned: 0.5,
+        date: new Date().toISOString(),
+        status: 'completed'
+      },
+      {
+        id: '2',
+        sessionType: 'Trading',
+        duration: 15,
+        piEarned: 0.2,
+        date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        status: 'completed'
+      }
+    ];
+
+    localStorage.setItem('habits', JSON.stringify(demoHabits));
+    localStorage.setItem('tasks', JSON.stringify(demoTasks));
+    localStorage.setItem('piRewards', JSON.stringify(demoPiRewards));
+
+    toast({
+      title: "Demo Data Created",
+      description: "Sample habits, tasks, and Pi rewards have been added. You can now test the data management features!",
+    });
   };
 
   // Check if user has access to a specific plan level using hasFeature
@@ -467,7 +1022,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
               </div>
             </div>
             <Badge variant="secondary" className="text-red-600 border-red-200">
-              <Lock className="h-4 w-4 mr-1" />
+                              <Key className="h-4 w-4 mr-1" />
               Locked
             </Badge>
           </div>
@@ -480,7 +1035,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
             <div className="absolute inset-0 bg-gray-50/80 backdrop-blur-sm z-10 flex items-center justify-center">
               <div className="text-center space-y-4">
                 <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center">
-                  <Lock className="h-8 w-8 text-gray-400" />
+                  <Key className="h-8 w-8 text-gray-400" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-700 mb-2">
@@ -548,592 +1103,373 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
     );
   };
 
+  // Safety check for user data
+  if (!user) {
+    console.error('UserDashboard: No user data provided');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Dashboard Error</h1>
+          <p className="text-gray-600 mb-4">No user data available. Please log in again.</p>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Enhanced Sidebar for desktop, Drawer for mobile */}
-      {isMobile ? (
-        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <SheetContent side="left" className="p-0 w-80 max-w-full">
-            <Sidebar onLockedFeatureClick={handleFeatureNavigation} userPlan={user.plan} />
-          </SheetContent>
-        </Sheet>
-      ) : (
-        <Sidebar onLockedFeatureClick={handleFeatureNavigation} userPlan={user.plan} />
-      )}
+      {/* Enhanced Sidebar */}
+      <Sheet open={drawerOpen} onOpenChange={(open) => {
+        console.log('Sheet onOpenChange called with:', open);
+        setDrawerOpen(open);
+      }}>
+        <SheetContent side="left" className="p-0 w-80 max-w-full">
+          <MobileSidebar 
+            user={user}
+            onClose={() => {
+              console.log('MobileSidebar onClose called');
+              setDrawerOpen(false);
+            }}
+            onLogout={onLogout}
+            onUpgrade={onUpgrade}
+            onFeatureClick={handleFeatureNavigation}
+          />
+        </SheetContent>
+      </Sheet>
       
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0 min-h-screen mobile-scroll">
         {/* Enhanced Header with Mobile/Desktop optimizations */}
-        <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-4 border-b border-slate-200 bg-white shadow-sm md:px-8 md:py-6">
-          <div className="flex items-center gap-3">
-            {isMobile && (
-              <button
-                className="mr-3 p-2 rounded-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                onClick={() => setDrawerOpen(true)}
-                aria-label="Open menu"
-              >
-                <Menu className="h-6 w-6 text-slate-700" />
-              </button>
-            )}
-            
-            {/* Breadcrumb Navigation */}
-            <div className="hidden md:flex items-center space-x-2">
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="/dashboard" className="flex items-center">
-                      <Home className="h-4 w-4 mr-1" />
-                      Dashboard
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{getBreadcrumbPath()}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
+        <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-4 border-b border-slate-200 bg-white shadow-sm md:px-8 md:py-6 mobile-sticky">
+          {/* Menu Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              console.log('Menu button clicked, current drawer state:', drawerOpen);
+              console.log('isMobile:', isMobile);
+              setDrawerOpen(true);
+              console.log('Setting drawer to open');
+            }}
+            className="flex md:flex"
+          >
+            <Menu className="h-5 w-5" />
+            {drawerOpen && <span className="ml-1 text-xs text-green-600">✓</span>}
+          </Button>
 
-            <span className="text-xl md:text-2xl font-bold text-navy-900">Salenus A.I Dashboard</span>
-            <Badge variant="secondary" className="ml-3">
-              {user.plan} Plan
-            </Badge>
+          {/* Breadcrumb */}
+          <div className="flex items-center space-x-2">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{getBreadcrumbPath()}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
-          
-          <div className="flex items-center gap-2 md:gap-4">
-            {/* Search Bar */}
-            {!isMobile && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search features..."
-                  className="pl-10 w-64"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            )}
+
+          {/* Header Actions */}
+          <div className="flex items-center space-x-2">
+            {/* Search */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSearch(!showSearch)}
+              className="hidden md:flex"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+
+            {/* Notifications */}
+            <Button variant="ghost" size="sm">
+              <Bell className="h-4 w-4" />
+            </Button>
 
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <User className="h-4 w-4" />
+                <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <User className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <span className="hidden md:block text-sm font-medium">
+                    {user.name || user.email?.split('@')[0]}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>{user.name || user.email}</span>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                  <Home className="h-4 w-4 mr-2" />
+                  Dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <SettingsIcon className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
+                <DropdownMenuItem onClick={() => setShowSettings(true)}>
+                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <HelpCircle className="mr-2 h-4 w-4" />
-                  <span>Help</span>
+                <DropdownMenuItem onClick={() => setShowDataManagementModal(true)}>
+                  <Database className="h-4 w-4 mr-2" />
+                  Data Management
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                <DropdownMenuItem onClick={() => setShowKeyboardShortcuts(true)}>
+                  <Keyboard className="h-4 w-4 mr-2" />
+                  Keyboard Shortcuts
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/help')}>
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  Help & Support
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            {/* Keyboard Shortcuts Help */}
-            {!isMobile && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowKeyboardShortcuts(true)}
-                      className="hidden lg:flex"
-                    >
-                      <Keyboard className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Keyboard shortcuts</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        </div>
-        
-        {/* Enhanced Expiring Soon Banner */}
-        {isExpiringSoon && (
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-b border-yellow-200 px-4 md:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-yellow-800">
-                  Your {user.plan} plan expires in {
-                    Math.ceil((new Date(user.planExpiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-                  } days
-                </span>
-              </div>
-              <Button 
-                variant="outline"
-                size="sm"
-                onClick={() => handleLockedFeatureClick('renew', user.plan as UserPlan)}
-                className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
-              >
-                Renew Now →
-              </Button>
-            </div>
-          </div>
-        )}
-        
-        {/* Enhanced Plan Status Banner */}
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 px-4 md:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Sparkles className="h-5 w-5 text-indigo-600" />
-              <span className="text-sm font-medium text-indigo-800">
-                {user.plan} Plan Active - {availableFeatures.length} features unlocked
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              {/* Enhanced Plan Expiration Panel */}
-              {user.plan !== 'Free' && user.planExpiry && (
-                <div className="bg-white rounded-lg px-4 py-2 border border-indigo-200 shadow-sm">
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-indigo-600" />
-                    <div className="text-xs">
-                      <div className="font-medium text-indigo-800">
-                        {user.planExpiry ? (
-                          <>
-                            Expires: {new Date(user.planExpiry).toLocaleDateString()}
-                            <Badge variant="outline" className="ml-2">
-                              {(() => {
-                                const expiryDate = new Date(user.planExpiry);
-                                const now = new Date();
-                                const diffTime = expiryDate.getTime() - now.getTime();
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                
-                                if (diffDays <= 0) {
-                                  return 'Expired';
-                                } else if (diffDays <= 7) {
-                                  return `${diffDays} days left`;
-                                } else if (diffDays <= 30) {
-                                  return `${Math.ceil(diffDays / 7)} weeks left`;
-                                } else {
-                                  return `${Math.ceil(diffDays / 30)} months left`;
-                                }
-                              })()}
-                            </Badge>
-                          </>
-                        ) : (
-                          'No expiry date'
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Enhanced Auto-Renewal Status */}
-              {user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) > new Date() && (
-                <div className="bg-green-50 rounded-lg px-3 py-2 border border-green-200 shadow-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="text-xs">
-                      <div className="font-medium text-green-800">Auto-renewal enabled</div>
-                      <div className="text-green-600">
-                        Next renewal: {new Date(user.planExpiry).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {user.plan !== 'Premium' && (
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleLockedFeatureClick('upgrade', 
-                    (user.plan === 'Free' ? 'Basic' : 
-                    user.plan === 'Basic' ? 'Pro' : 'Premium') as UserPlan
-                  )}
-                  className="text-indigo-600 border-indigo-300 hover:bg-indigo-100"
-                >
-                  Upgrade to {user.plan === 'Free' ? 'Basic' : user.plan === 'Basic' ? 'Pro' : 'Premium'} →
-                </Button>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Enhanced Main Content Area */}
+        {/* Main Content */}
         <div className="p-4 md:p-8">
-          {/* Tab Bar */}
-          <div className="flex gap-2 mb-6 border-b border-slate-200">
-            <button
-              className={`px-4 py-2 font-semibold rounded-t-md transition-all duration-200 focus:outline-none ${activeTab === 'overview' ? 'bg-white border-x border-t border-slate-200 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
-              onClick={() => setActiveTab('overview')}
-            >
-              Overview
-            </button>
-            <button
-              className={`px-4 py-2 font-semibold rounded-t-md transition-all duration-200 focus:outline-none ${activeTab === 'features' ? 'bg-white border-x border-t border-slate-200 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
-              onClick={() => setActiveTab('features')}
-            >
-              Features
-            </button>
-            <button
-              className={`px-4 py-2 font-semibold rounded-t-md transition-all duration-200 focus:outline-none ${activeTab === 'settings' ? 'bg-white border-x border-t border-slate-200 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
-              onClick={() => setActiveTab('settings')}
-            >
-              Settings
-            </button>
+          {/* Welcome Message */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Welcome back, {user.name || user.email?.split('@')[0]}! 👋
+            </h1>
+            <p className="text-gray-600">
+              Ready to continue your journey with Salenus A.I?
+            </p>
           </div>
 
-          {/* Tab Content */}
-          {activeTab === 'overview' ? (
-            // Overview Tab Content - Show actual feature component or locked feature view
-            <div className="space-y-6">
-              {featureLoading ? (
-                <FeatureLoader featureName={currentFeature} />
-              ) : isFeatureLocked && lockedFeatureInfo ? (
-                // Show locked feature view
-                <LockedFeature featureInfo={lockedFeatureInfo} />
-              ) : (
-                // Show available feature component
-                <>
-                  {/* Feature Header */}
-                  <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {activeFeature === 'habits' && 'Habit Tracking'}
-                          {activeFeature === 'tasks' && 'Task Management'}
-                          {activeFeature === 'challenges' && 'Community Challenges'}
-                          {activeFeature === 'sync' && 'Cross-Platform Sync'}
-                          {activeFeature === 'mobile' && 'Mobile App Access'}
-                          {activeFeature === 'notifications' && 'Basic Notifications'}
-                          {activeFeature === 'mood' && 'Mood Tracker'}
-                          {activeFeature === 'free-preview' && 'Free Habit Preview'}
-                          {activeFeature === 'pi-network' && 'Pi Network Integration'}
-                          {activeFeature === 'goals' && 'Advanced Goals'}
-                          {activeFeature === 'journal' && 'Habit Journal'}
-                          {activeFeature === 'photos' && 'Progress Photos'}
-                          {activeFeature === 'custom-challenges' && 'Custom Challenges'}
-                          {activeFeature === 'streak-protection' && 'Streak Protection'}
-                          {activeFeature === 'smart-reminders' && 'Smart Reminders'}
-                          {activeFeature === 'support' && 'Priority Support'}
-                          {activeFeature === 'ai-coach' && 'AI Personal Coach'}
-                          {activeFeature === 'analytics' && 'Advanced Analytics'}
-                          {activeFeature === 'calendar' && 'Calendar Integration'}
-                          {activeFeature === 'vip-support' && 'VIP Support'}
-                          {activeFeature === 'exclusive' && 'Exclusive Features'}
-                          {activeFeature === 'courses' && 'Personalized Courses'}
-                          {activeFeature === 'api' && 'API Access'}
-                          {activeFeature === 'white-label' && 'White-Label Options'}
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                          {activeFeature === 'habits' && 'Track your daily habits and build streaks'}
-                          {activeFeature === 'tasks' && 'Manage your tasks and stay organized'}
-                          {activeFeature === 'challenges' && 'Join community challenges and compete'}
-                          {activeFeature === 'sync' && 'Sync your data across all devices'}
-                          {activeFeature === 'mobile' && 'Access Salenus A.I on mobile devices'}
-                          {activeFeature === 'notifications' && 'Get smart reminders and notifications'}
-                          {activeFeature === 'mood' && 'Track your mood and get insights'}
-                          {activeFeature === 'free-preview' && 'Preview basic habit tracking features'}
-                          {activeFeature === 'pi-network' && 'Integrate with Pi Network ecosystem'}
-                          {activeFeature === 'goals' && 'Set and track advanced goals'}
-                          {activeFeature === 'journal' && 'Journal your habits and progress'}
-                          {activeFeature === 'photos' && 'Track progress with photos'}
-                          {activeFeature === 'custom-challenges' && 'Create custom challenges'}
-                          {activeFeature === 'streak-protection' && 'Protect your streaks'}
-                          {activeFeature === 'smart-reminders' && 'Get AI-powered reminders'}
-                          {activeFeature === 'support' && 'Get priority customer support'}
-                          {activeFeature === 'ai-coach' && 'Get personalized AI coaching'}
-                          {activeFeature === 'analytics' && 'Advanced analytics and insights'}
-                          {activeFeature === 'calendar' && 'Full calendar integration'}
-                          {activeFeature === 'vip-support' && '24/7 VIP support'}
-                          {activeFeature === 'exclusive' && 'Access exclusive features'}
-                          {activeFeature === 'courses' && 'Personalized learning courses'}
-                          {activeFeature === 'api' && 'Developer API access'}
-                          {activeFeature === 'white-label' && 'White-label solutions'}
-                        </p>
-                      </div>
-                      <Badge variant="secondary">{user.plan} Plan</Badge>
-                    </div>
+          {/* Plan Status and Upgrade Banner */}
+          {(isExpired || isExpiringSoon) && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-100 rounded-full">
+                    <Crown className="h-5 w-5 text-orange-600" />
                   </div>
-
-                  {/* Feature Component */}
-                  <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <div className="p-6">
-                      {/* Render the actual feature component based on activeFeature */}
-                      {activeFeature === 'habits' && hasPlanAccess('Basic') && <HabitTracker />}
-                      {activeFeature === 'tasks' && hasPlanAccess('Basic') && <TaskManager />}
-                      {activeFeature === 'challenges' && hasPlanAccess('Basic') && <CommunityChallenges />}
-                      {activeFeature === 'sync' && hasPlanAccess('Basic') && <CrossPlatformSync />}
-                      {activeFeature === 'mobile' && hasPlanAccess('Basic') && <MobileAppAccess />}
-                      {activeFeature === 'notifications' && hasPlanAccess('Basic') && <BasicNotifications />}
-                      {activeFeature === 'mood' && hasPlanAccess('Pro') && <MoodTracker />}
-                      {activeFeature === 'free-preview' && hasPlanAccess('Free') && (
-                        <TestFeature 
-                          featureName="Free Habit Preview" 
-                          description="Preview basic habit tracking. Upgrade to unlock full functionality." 
-                          icon={<BarChart3 className="h-8 w-8" />} 
-                          color="bg-gray-100" 
-                        />
-                      )}
-                      {activeFeature === 'pi-network' && hasPlanAccess('Free') && (
-                        <TestFeature 
-                          featureName="Pi Network Integration" 
-                          description="Access Pi Network features and earn Pi cryptocurrency." 
-                          icon={<Users className="h-8 w-8" />} 
-                          color="bg-yellow-100" 
-                        />
-                      )}
-                      {activeFeature === 'goals' && hasPlanAccess('Pro') && <AdvancedGoalSetting onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'journal' && hasPlanAccess('Pro') && <HabitJournal onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'photos' && hasPlanAccess('Pro') && <ProgressPhotos onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'custom-challenges' && hasPlanAccess('Pro') && <CustomChallenges onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'streak-protection' && hasPlanAccess('Pro') && <StreakProtection onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'smart-reminders' && hasPlanAccess('Pro') && <SmartReminders onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'support' && hasPlanAccess('Pro') && <PrioritySupport onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'ai-coach' && hasPlanAccess('Premium') && <AICoach />}
-                      {activeFeature === 'analytics' && hasPlanAccess('Premium') && <AdvancedAnalytics onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'calendar' && hasPlanAccess('Premium') && <CalendarIntegration onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'vip-support' && hasPlanAccess('Premium') && <VIPSupport onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'exclusive' && hasPlanAccess('Premium') && <ExclusiveFeatures onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'courses' && hasPlanAccess('Premium') && <PersonalizedCourses onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'api' && hasPlanAccess('Premium') && <APIAccess onUpgrade={() => setPaymentOpen(true)} />}
-                      {activeFeature === 'white-label' && hasPlanAccess('Premium') && <WhiteLabel onUpgrade={() => setPaymentOpen(true)} />}
-                    </div>
+                  <div>
+                    <h3 className="font-semibold text-orange-900">
+                      {isExpired ? 'Plan Expired' : 'Plan Expiring Soon'}
+                    </h3>
+                    <p className="text-sm text-orange-700">
+                      {isExpired 
+                        ? 'Your plan has expired. Upgrade to continue accessing premium features.'
+                        : `Your plan expires in ${Math.ceil((new Date(user.planExpiry).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days.`
+                      }
+                    </p>
                   </div>
-                </>
-              )}
+                </div>
+                <Button 
+                  onClick={() => setPaymentOpen(true)}
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {isExpired ? 'Renew Plan' : 'Upgrade Now'}
+                </Button>
+              </div>
             </div>
-          ) : activeTab === 'features' ? (
-            // Features Tab Content (existing feature grid)
-            <div>
-              {/* Show loading state when navigating */}
-              {featureLoading ? (
-                <FeatureLoader featureName={currentFeature} />
-              ) : (
-                <>
-                  {/* Enhanced Feature Overview Section */}
-                  <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Your Available Features</h2>
-                        <p className="text-gray-600">
-                          Based on your {user.plan} plan, you have access to {availableFeatures.length} features.
-                        </p>
-                      </div>
-                      
-                      {/* Desktop: Quick Actions */}
-                      {!isMobile && (
-                        <div className="flex items-center space-x-2">
-                          <Button variant="outline" size="sm">
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Refresh
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <SettingsIcon className="h-4 w-4 mr-2" />
-                            Settings
-                          </Button>
-                        </div>
-                      )}
+          )}
+
+          {/* Welcome Banner for New Upgrades */}
+          {user.hasPaid && user.plan !== 'Free' && (
+            <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-100 rounded-full">
+                    <Crown className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-green-900">
+                      Welcome to {user.plan}! 🎉
+                    </h3>
+                    <p className="text-sm text-green-700">
+                      You now have access to premium features. Explore your new capabilities below!
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => navigate('/dashboard/features')}
+                  variant="outline"
+                  className="border-green-300 text-green-700 hover:bg-green-50"
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  Explore Features
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Habits</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">5</div>
+                <p className="text-xs text-muted-foreground">
+                  +2 from last week
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Tasks Today</CardTitle>
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">12</div>
+                <p className="text-xs text-muted-foreground">
+                  8 completed
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
+                <Flame className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">7 days</div>
+                <p className="text-xs text-muted-foreground">
+                  Personal best: 21 days
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Plan</CardTitle>
+                <Crown className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{user.plan}</div>
+                {user.planExpiry && user.plan !== 'Free' && (
+                  <p className="text-xs text-muted-foreground">
+                    Expires: {new Date(user.planExpiry).toLocaleDateString()}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Data Management Quick Access - Collapsible */}
+          <div className="mb-8">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Database className="h-5 w-5 mr-2" />
+                    <div>
+                      <CardTitle>Data Management</CardTitle>
+                      <CardDescription>
+                        Export, import, backup, and manage your data
+                      </CardDescription>
                     </div>
                   </div>
-
-                  {/* Enhanced Plan Information Panel */}
-                  <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8 shadow-sm hover:shadow-md transition-shadow duration-300">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Plan Details</h3>
-                      <Badge variant={
-                        user.plan === 'Free' ? 'secondary' :
-                        user.plan === 'Basic' ? 'default' :
-                        user.plan === 'Pro' ? 'outline' : 'default'
-                      }>
-                        {user.plan} Plan
-                      </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDataManagement(!showDataManagement)}
+                    className="flex items-center space-x-1"
+                  >
+                    {showDataManagement ? (
+                      <>
+                        <ChevronUp className="h-4 w-4" />
+                        <span className="text-xs">Hide</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4" />
+                        <span className="text-xs">Show</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              {showDataManagement && (
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={handleExportData}
+                      disabled={isDataActionLoading}
+                    >
+                      <Download className="w-6 h-6" />
+                      <span className="text-sm">Export Data</span>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={() => setShowDataManagementModal(true)}
+                    >
+                      <Upload className="w-6 h-6" />
+                      <span className="text-sm">Import Data</span>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={handleBackupData}
+                      disabled={isDataActionLoading}
+                    >
+                      {isDataActionLoading ? (
+                        <Loader size="sm" message="Backing up..." />
+                      ) : (
+                        <Archive className="w-6 h-6" />
+                      )}
+                      <span className="text-sm">Create Backup</span>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={() => setShowDataManagementModal(true)}
+                    >
+                      <Database className="w-6 h-6" />
+                      <span className="text-sm">Manage Data</span>
+                    </Button>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="text-sm text-gray-500">
+                      <strong>Quick Stats:</strong> {getDataStats().habits} habits, {getDataStats().tasks} tasks, {getDataStats().piRewards} Pi rewards, {getDataStats().backups} backups
                     </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={createDemoData}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Demo Data
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </div>
+
+          {/* Nested Routes for Dashboard Features */}
+          <div className="px-4 md:px-6 pb-6 mobile-safe-area">
+            <Routes>
+              {/* Dashboard Overview */}
+              <Route path="/" element={
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="p-6">
+                    <h2 className="text-xl font-semibold mb-4">Dashboard Overview</h2>
+                    <p className="text-gray-600 mb-4">Select a feature from the sidebar to get started.</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {/* Plan Status */}
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">Plan Status</h4>
-                        <div className="text-sm text-gray-600">
-                          {user.plan === 'Free' ? (
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span>Active (Free)</span>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-2 h-2 rounded-full ${
-                                  user.planExpiry && new Date(user.planExpiry) > new Date() 
-                                    ? 'bg-green-500' 
-                                    : 'bg-red-500'
-                                }`}></div>
-                                <span>{user.planExpiry && new Date(user.planExpiry) > new Date() ? 'Active' : 'Expired'}</span>
-                              </div>
-                              {user.planExpiry && (
-                                <div className="text-xs text-gray-500">
-                                  Since: {new Date(user.planExpiry).toLocaleDateString()}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Billing Information */}
-                      {user.plan !== 'Free' && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-gray-700">Billing Information</h4>
-                          <div className="text-sm text-gray-600 space-y-1">
-                            {user.planExpiry ? (
-                              <>
-                                <div>
-                                  <span className="font-medium">Cycle:</span> {
-                                    (() => {
-                                      const expiryDate = new Date(user.planExpiry);
-                                      const now = new Date();
-                                      const diffTime = expiryDate.getTime() - now.getTime();
-                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                      
-                                      if (diffDays > 365) {
-                                        return 'Yearly';
-                                      } else if (diffDays > 30) {
-                                        return 'Monthly';
-                                      } else {
-                                        return 'Trial';
-                                      }
-                                    })()
-                                  }
-                                </div>
-                                <div>
-                                  <span className="font-medium">Next Payment:</span> {new Date(user.planExpiry).toLocaleDateString()}
-                                </div>
-                                <div>
-                                  <span className="font-medium">Price:</span> {
-                                    (() => {
-                                      const expiryDate = new Date(user.planExpiry);
-                                      const now = new Date();
-                                      const diffTime = expiryDate.getTime() - now.getTime();
-                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                      
-                                      if (diffDays > 365) {
-                                        return user.plan === 'Basic' ? '50 Pi/year' : 
-                                               user.plan === 'Pro' ? '100 Pi/year' : '150 Pi/year';
-                                      } else {
-                                        return user.plan === 'Basic' ? '5 Pi/month' : 
-                                               user.plan === 'Pro' ? '10 Pi/month' : '15 Pi/month';
-                                      }
-                                    })()
-                                  }
-                                </div>
-                                
-                                {/* Enhanced Billing Cycle Progress Bar */}
-                                {(() => {
-                                  const expiryDate = new Date(user.planExpiry);
-                                  const now = new Date();
-                                  const totalDays = expiryDate.getTime() - now.getTime() > 365 * 24 * 60 * 60 * 1000 ? 365 : 30;
-                                  const remainingDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                  const progressPercentage = Math.max(0, Math.min(100, ((totalDays - remainingDays) / totalDays) * 100));
-                                  
-                                  return (
-                                    <div className="mt-3">
-                                      <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                        <span>Billing Progress</span>
-                                        <span>{Math.round(progressPercentage)}% used</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div 
-                                          className={`h-2 rounded-full transition-all duration-300 ${
-                                            progressPercentage > 80 ? 'bg-red-500' :
-                                            progressPercentage > 60 ? 'bg-yellow-500' : 'bg-green-500'
-                                          }`}
-                                          style={{ width: `${progressPercentage}%` }}
-                                        ></div>
-                                      </div>
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        {remainingDays > 0 ? `${remainingDays} days remaining` : 'Expired'}
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </>
-                            ) : (
-                              <div>No billing information</div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Plan Benefits */}
-                      <div className="space-y-2">
-                        <h4 className="font-medium text-gray-700">Plan Benefits</h4>
-                        <div className="text-sm text-gray-600">
-                          <div className="space-y-1">
-                            <div>• {availableFeatures.length} features unlocked</div>
-                            <div>• {user.plan === 'Free' ? 'Limited access' : 
-                                   user.plan === 'Basic' ? 'Basic support' :
-                                   user.plan === 'Pro' ? 'Priority support' : 'VIP support'}</div>
-                            <div>• {user.plan === 'Free' ? 'No sync' : 
-                                   user.plan === 'Basic' ? 'Basic sync' :
-                                   user.plan === 'Pro' ? 'Advanced sync' : 'Full sync'}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Enhanced Action Buttons */}
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-                      <div className="text-sm text-gray-600">
-                        {user.plan === 'Free' ? (
-                          'Upgrade to unlock premium features'
-                        ) : user.planExpiry && new Date(user.planExpiry) <= new Date() ? (
-                          'Your plan has expired. Renew to continue access.'
-                        ) : (
-                          'Your plan is active and working perfectly'
-                        )}
-                      </div>
-                      <div className="flex space-x-3">
-                        {user.plan !== 'Premium' && (
-                          <Button 
-                            onClick={() => handleLockedFeatureClick('upgrade', 
-                              (user.plan === 'Free' ? 'Basic' : 
-                              user.plan === 'Basic' ? 'Pro' : 'Premium') as UserPlan
-                            )}
-                            variant="default"
-                            size="sm"
-                          >
-                            {user.plan === 'Free' ? 'Upgrade Plan' : 
-                             user.planExpiry && new Date(user.planExpiry) <= new Date() ? 'Renew Plan' : 'Upgrade'}
-                          </Button>
-                        )}
-                        {user.plan !== 'Free' && user.planExpiry && new Date(user.planExpiry) > new Date() && (
-                          <Button 
-                            onClick={() => handleLockedFeatureClick('manage', user.plan as UserPlan)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            Manage Plan
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Enhanced Feature Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mb-8">
-                    {allFeatures.map(feature => {
-                      const isAvailable = hasPlanAccess(feature.requiredPlan);
-                      const isLocked = !isAvailable;
-                      
-                      return (
+                    {/* Feature Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {allFeatures.map((feature) => (
                         <FeatureCard
                           key={feature.featureKey}
                           title={feature.title}
@@ -1141,383 +1477,367 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                           icon={feature.icon}
                           featureKey={feature.featureKey}
                           requiredPlan={feature.requiredPlan as UserPlan}
-                          userPlan={user.plan as UserPlan}
-                          isLocked={isLocked}
-                          onUpgrade={() => handleLockedFeatureClick(feature.featureKey, feature.requiredPlan as UserPlan)}
+                          userPlan={user?.plan}
+                          isLocked={!hasPlanAccess(feature.requiredPlan)}
+                          onUpgrade={() => setPaymentOpen(true)}
                         />
-                      );
-                    })}
-                  </div>
-
-                  {/* Enhanced Plan-specific routes */}
-                  <Routes>
-                    {/* Free Plan Routes */}
-                    <Route path="free-preview" element={hasPlanAccess('Free') ? <TestFeature featureName="Free Habit Preview" description="Preview basic habit tracking. Upgrade to unlock full functionality." icon={<BarChart3 className="h-8 w-8" />} color="bg-gray-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="pi-network" element={hasPlanAccess('Free') ? <TestFeature featureName="Pi Network Integration" description="Access Pi Network features and earn Pi cryptocurrency." icon={<Users className="h-8 w-8" />} color="bg-yellow-100" /> : <Navigate to="/dashboard" replace />} />
-                    
-                    {/* Basic Plan Routes */}
-                    <Route path="habits" element={hasPlanAccess('Basic') ? <HabitTracker /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="tasks" element={hasPlanAccess('Basic') ? <TaskManager /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="challenges" element={hasPlanAccess('Basic') ? <CommunityChallenges /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="sync" element={hasPlanAccess('Basic') ? <CrossPlatformSync /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="mobile" element={hasPlanAccess('Basic') ? <MobileAppAccess /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="notifications" element={hasPlanAccess('Basic') ? <BasicNotifications /> : <Navigate to="/dashboard" replace />} />
-                    
-                    {/* Pro Plan Routes */}
-                    <Route path="mood" element={hasPlanAccess('Pro') ? <MoodTracker /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="goals" element={hasPlanAccess('Pro') ? <TestFeature featureName="Advanced Goals" description="Pro feature - Advanced goal setting with milestones" icon={<Star className="h-8 w-8" />} color="bg-purple-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="journal" element={hasPlanAccess('Pro') ? <TestFeature featureName="Habit Journal" description="Pro feature - Advanced journaling with templates" icon={<BookOpen className="h-8 w-8" />} color="bg-indigo-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="photos" element={hasPlanAccess('Pro') ? <TestFeature featureName="Progress Photos" description="Pro feature - Progress photos and visual tracking" icon={<Camera className="h-8 w-8" />} color="bg-pink-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="custom-challenges" element={hasPlanAccess('Pro') ? <TestFeature featureName="Custom Challenges" description="Pro feature - Create private challenges for friends" icon={<Trophy className="h-8 w-8" />} color="bg-orange-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="streak-protection" element={hasPlanAccess('Pro') ? <TestFeature featureName="Streak Protection" description="Pro feature - Protect your streaks with freeze days" icon={<Flame className="h-8 w-8" />} color="bg-red-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="smart-reminders" element={hasPlanAccess('Pro') ? <TestFeature featureName="Smart Reminders" description="Pro feature - AI-powered adaptive reminders" icon={<Bell className="h-8 w-8" />} color="bg-green-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="support" element={hasPlanAccess('Pro') ? <TestFeature featureName="Priority Support" description="Pro feature - Email support with 24-hour response" icon={<MessageSquare className="h-8 w-8" />} color="bg-blue-100" /> : <Navigate to="/dashboard" replace />} />
-                    
-                    {/* Premium Plan Routes */}
-                    <Route path="ai-coach" element={hasPlanAccess('Premium') ? <AICoach /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="analytics" element={hasPlanAccess('Premium') ? <TestFeature featureName="Advanced Analytics" description="Premium feature - Deep insights and predictive analytics" icon={<PieChart className="h-8 w-8" />} color="bg-indigo-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="calendar" element={hasPlanAccess('Premium') ? <TestFeature featureName="Calendar Integration" description="Premium feature - Full calendar integration" icon={<Calendar className="h-8 w-8" />} color="bg-purple-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="vip-support" element={hasPlanAccess('Premium') ? <TestFeature featureName="VIP Support" description="Premium feature - 24/7 priority support with dedicated manager" icon={<Shield className="h-8 w-8" />} color="bg-yellow-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="exclusive" element={hasPlanAccess('Premium') ? <TestFeature featureName="Exclusive Features" description="Premium feature - Early access to beta features" icon={<Lightbulb className="h-8 w-8" />} color="bg-pink-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="courses" element={hasPlanAccess('Premium') ? <TestFeature featureName="Personalized Courses" description="Premium feature - AI-curated learning paths" icon={<GraduationCap className="h-8 w-8" />} color="bg-green-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="api" element={hasPlanAccess('Premium') ? <TestFeature featureName="API Access" description="Premium feature - Developer API access" icon={<Globe className="h-8 w-8" />} color="bg-blue-100" /> : <Navigate to="/dashboard" replace />} />
-                    <Route path="white-label" element={hasPlanAccess('Premium') ? <TestFeature featureName="White-Label Options" description="Premium feature - Custom branding solutions" icon={<Settings className="h-8 w-8" />} color="bg-gray-100" /> : <Navigate to="/dashboard" replace />} />
-                    
-                    {/* Default route based on user plan */}
-                    <Route path="*" element={
-                      user.plan === 'Free' ? <Navigate to="free-preview" replace /> :
-                      user.plan === 'Basic' ? <Navigate to="habits" replace /> :
-                      user.plan === 'Pro' ? <Navigate to="habits" replace /> :
-                      user.plan === 'Premium' ? <Navigate to="habits" replace /> :
-                      <Navigate to="habits" replace />
-                    } />
-                  </Routes>
-                </>
-              )}
-            </div>
-          ) : (
-            // Settings Tab Content
-            <div className="space-y-6">
-              {/* Profile Section */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Settings</h3>
-                <div className="space-y-4">
-                  {/* Avatar */}
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <img 
-                        src={profileData.avatar || "/logo.png"} 
-                        alt="Profile" 
-                        className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
-                      />
-                      <button className="absolute -bottom-1 -right-1 bg-indigo-600 text-white rounded-full p-1 hover:bg-indigo-700 transition-colors">
-                        <Camera className="h-3 w-3" />
-                      </button>
+                      ))}
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Profile Picture</h4>
-                      <p className="text-sm text-gray-500">Click to upload a new image</p>
-                    </div>
-                  </div>
-
-                  {/* Name and Email */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                      <input
-                        type="text"
-                        value={profileData.name}
-                        onChange={(e) => setProfileData({...profileData, name: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Enter your full name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                      <input
-                        type="email"
-                        value={profileData.email}
-                        onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Enter your email"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button className="bg-indigo-600 hover:bg-indigo-700">
-                      Save Changes
-                    </Button>
                   </div>
                 </div>
-              </div>
-
-              {/* Plan Management */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Plan Management</h3>
-                <div className="space-y-4">
-                  {/* Current Plan */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Current Plan: {user.plan}</h4>
-                        <p className="text-sm text-gray-600">
-                          {user.planExpiry ? `Expires: ${new Date(user.planExpiry).toLocaleDateString()}` : 'No expiry date'}
-                        </p>
-                      </div>
-                      <Badge variant={user.plan === 'Premium' ? 'default' : 'outline'}>
-                        {user.plan} Plan
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Plan Actions */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {user.plan !== 'Premium' && (
-                      <Button 
-                        onClick={() => handleLockedFeatureClick('upgrade', 
-                          (user.plan === 'Free' ? 'Basic' : 
-                          user.plan === 'Basic' ? 'Pro' : 'Premium') as UserPlan
-                        )}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        Upgrade Plan
-                      </Button>
-                    )}
-                    {user.plan !== 'Free' && (
-                      <Button 
-                        variant="outline"
-                        onClick={() => handleLockedFeatureClick('manage', user.plan as UserPlan)}
-                        className="w-full"
-                      >
-                        Manage Billing
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Cancel Plan Section */}
-                  {user.plan !== 'Free' && (
-                    <div className="border-t border-gray-200 pt-4 mt-4">
-                      <div className="bg-red-50 rounded-lg p-4">
-                        <h4 className="font-medium text-red-900 mb-2">Cancel Plan</h4>
-                        <p className="text-sm text-red-700 mb-3">
-                          Cancelling your plan will immediately downgrade you to the Free plan. 
-                          <strong> No refunds will be issued for any remaining time on your current plan.</strong>
-                        </p>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline"
-                            onClick={() => setShowCancellationModal(true)}
-                            className="border-red-300 text-red-700 hover:bg-red-50"
-                          >
-                            Cancel Plan
-                          </Button>
-                          <span className="text-xs text-red-600 flex items-center">
-                            <Shield className="h-3 w-3 mr-1" />
-                            No refunds
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Billing Information */}
-                  {user.plan !== 'Free' && user.planExpiry && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 mb-2">Billing Information</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-blue-700 font-medium">Billing Cycle:</span>
-                          <p className="text-blue-600">
-                            {(() => {
-                              const expiryDate = new Date(user.planExpiry);
-                              const now = new Date();
-                              const diffTime = expiryDate.getTime() - now.getTime();
-                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                              
-                              if (diffDays > 365) return 'Yearly';
-                              else if (diffDays > 30) return 'Monthly';
-                              else return 'Trial';
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-blue-700 font-medium">Next Payment:</span>
-                          <p className="text-blue-600">{new Date(user.planExpiry).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <span className="text-blue-700 font-medium">Amount:</span>
-                          <p className="text-blue-600">
-                            {(() => {
-                              const expiryDate = new Date(user.planExpiry);
-                              const now = new Date();
-                              const diffTime = expiryDate.getTime() - now.getTime();
-                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                              
-                              if (diffDays > 365) {
-                                return user.plan === 'Basic' ? '50 Pi/year' : 
-                                       user.plan === 'Pro' ? '100 Pi/year' : '150 Pi/year';
-                              } else {
-                                return user.plan === 'Basic' ? '5 Pi/month' : 
-                                       user.plan === 'Pro' ? '10 Pi/month' : '15 Pi/month';
-                              }
-                            })()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Notifications */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Email Notifications</h4>
-                      <p className="text-sm text-gray-600">Receive updates via email</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={profileData.notifications.email}
-                      onChange={(e) => setProfileData({
-                        ...profileData, 
-                        notifications: {...profileData.notifications, email: e.target.checked}
-                      })}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Push Notifications</h4>
-                      <p className="text-sm text-gray-600">Get notified in real-time</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={profileData.notifications.push}
-                      onChange={(e) => setProfileData({
-                        ...profileData, 
-                        notifications: {...profileData.notifications, push: e.target.checked}
-                      })}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">SMS Notifications</h4>
-                      <p className="text-sm text-gray-600">Receive text messages</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={profileData.notifications.sms}
-                      onChange={(e) => setProfileData({
-                        ...profileData, 
-                        notifications: {...profileData.notifications, sms: e.target.checked}
-                      })}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Privacy Settings */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Privacy & Security</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Public Profile</h4>
-                      <p className="text-sm text-gray-600">Allow others to see your profile</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={profileData.privacy.profilePublic}
-                      onChange={(e) => setProfileData({
-                        ...profileData, 
-                        privacy: {...profileData.privacy, profilePublic: e.target.checked}
-                      })}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Share Progress</h4>
-                      <p className="text-sm text-gray-600">Share your achievements with friends</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={profileData.privacy.shareProgress}
-                      onChange={(e) => setProfileData({
-                        ...profileData, 
-                        privacy: {...profileData.privacy, shareProgress: e.target.checked}
-                      })}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-gray-900">Analytics</h4>
-                      <p className="text-sm text-gray-600">Help improve Salenus A.I with usage data</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={profileData.privacy.allowAnalytics}
-                      onChange={(e) => setProfileData({
-                        ...profileData, 
-                        privacy: {...profileData.privacy, allowAnalytics: e.target.checked}
-                      })}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Management */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Management</h3>
-                <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export My Data
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import Data
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Account
-                  </Button>
-                </div>
-              </div>
-
-              {/* Account Actions */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Actions</h3>
-                <div className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Key className="h-4 w-4 mr-2" />
-                    Change Password
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Two-Factor Authentication
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start text-red-600 hover:text-red-700"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
+              } />
+            
+            {/* Habit Tracker */}
+            <Route path="/habits" element={
+              hasPlanAccess('Basic') ? (
+                <HabitTracker />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Habit Tracker",
+                  description: "Track your daily habits and build streaks",
+                  requiredPlan: "Basic",
+                  icon: <BarChart3 className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Task Manager */}
+            <Route path="/tasks" element={
+              hasPlanAccess('Basic') ? (
+                <TaskManager />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Task Manager",
+                  description: "Manage your tasks and to-dos",
+                  requiredPlan: "Basic",
+                  icon: <ClipboardList className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Community Challenges */}
+            <Route path="/challenges" element={
+              hasPlanAccess('Basic') ? (
+                <CommunityChallenges />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Community Challenges",
+                  description: "Join community challenges and compete",
+                  requiredPlan: "Basic",
+                  icon: <Users className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Cross Platform Sync */}
+            <Route path="/sync" element={
+              hasPlanAccess('Basic') ? (
+                <CrossPlatformSync />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Cross Platform Sync",
+                  description: "Sync your data across devices",
+                  requiredPlan: "Basic",
+                  icon: <Cloud className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Mobile App Access */}
+            <Route path="/mobile" element={
+              hasPlanAccess('Basic') ? (
+                <MobileAppAccess />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Mobile App Access",
+                  description: "Access the app on mobile devices",
+                  requiredPlan: "Basic",
+                  icon: <Smartphone className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Basic Notifications */}
+            <Route path="/notifications" element={
+              hasPlanAccess('Basic') ? (
+                <BasicNotifications />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Basic Notifications",
+                  description: "Receive notifications and reminders",
+                  requiredPlan: "Basic",
+                  icon: <Bell className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Mood Tracker */}
+            <Route path="/mood" element={
+              hasPlanAccess('Pro') ? (
+                <MoodTracker />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Mood Tracker",
+                  description: "Track your mood and get insights",
+                  requiredPlan: "Pro",
+                  icon: <Heart className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Free Habit Preview */}
+            <Route path="/free-preview" element={
+              hasPlanAccess('Free') ? (
+                <TestFeature 
+                  featureName="Free Habit Preview" 
+                  description="Preview basic habit tracking. Upgrade to unlock full functionality." 
+                  icon={<BarChart3 className="h-8 w-8" />} 
+                  color="bg-gray-100" 
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } />
+            
+            {/* Pi Network Integration */}
+            <Route path="/pi-network" element={
+              hasPlanAccess('Free') ? (
+                <TestFeature 
+                  featureName="Pi Network Integration" 
+                  description="Access Pi Network features and earn Pi cryptocurrency." 
+                  icon={<Users className="h-8 w-8" />} 
+                  color="bg-yellow-100" 
+                />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            } />
+            
+            {/* Advanced Goal Setting */}
+            <Route path="/goals" element={
+              hasPlanAccess('Pro') ? (
+                <AdvancedGoalSetting onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Advanced Goal Setting",
+                  description: "Set complex goals with milestones",
+                  requiredPlan: "Pro",
+                  icon: <Star className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Habit Journal */}
+            <Route path="/journal" element={
+              hasPlanAccess('Pro') ? (
+                <HabitJournal onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Habit Journal",
+                  description: "Journal your habit journey",
+                  requiredPlan: "Pro",
+                  icon: <BookOpen className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Progress Photos */}
+            <Route path="/photos" element={
+              hasPlanAccess('Pro') ? (
+                <ProgressPhotos onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Progress Photos",
+                  description: "Track progress with photos",
+                  requiredPlan: "Pro",
+                  icon: <Camera className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Custom Challenges */}
+            <Route path="/custom-challenges" element={
+              hasPlanAccess('Pro') ? (
+                <CustomChallenges onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Custom Challenges",
+                  description: "Create custom challenges",
+                  requiredPlan: "Pro",
+                  icon: <Trophy className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Streak Protection */}
+            <Route path="/streak-protection" element={
+              hasPlanAccess('Pro') ? (
+                <StreakProtection onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Streak Protection",
+                  description: "Protect your streaks",
+                  requiredPlan: "Pro",
+                  icon: <Flame className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Smart Reminders */}
+            <Route path="/smart-reminders" element={
+              hasPlanAccess('Pro') ? (
+                <SmartReminders onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Smart Reminders",
+                  description: "AI-powered reminders",
+                  requiredPlan: "Pro",
+                  icon: <Bell className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Priority Support */}
+            <Route path="/support" element={
+              hasPlanAccess('Pro') ? (
+                <PrioritySupport onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Priority Support",
+                  description: "Get priority customer support",
+                  requiredPlan: "Pro",
+                  icon: <MessageSquare className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* AI Coach */}
+            <Route path="/ai-coach" element={
+              hasPlanAccess('Premium') ? (
+                <AICoach />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "AI Personal Coach",
+                  description: "Get personalized AI coaching",
+                  requiredPlan: "Premium",
+                  icon: <Sparkles className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Advanced Analytics */}
+            <Route path="/analytics" element={
+              hasPlanAccess('Premium') ? (
+                <AdvancedAnalytics onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Advanced Analytics",
+                  description: "Deep insights and analytics",
+                  requiredPlan: "Premium",
+                  icon: <PieChart className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Calendar Integration */}
+            <Route path="/calendar" element={
+              hasPlanAccess('Premium') ? (
+                <CalendarIntegration onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Calendar Integration",
+                  description: "Integrate with your calendar",
+                  requiredPlan: "Premium",
+                  icon: <Calendar className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* VIP Support */}
+            <Route path="/vip-support" element={
+              hasPlanAccess('Premium') ? (
+                <VIPSupport onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "VIP Support",
+                  description: "24/7 VIP customer support",
+                  requiredPlan: "Premium",
+                  icon: <Shield className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Exclusive Features */}
+            <Route path="/exclusive" element={
+              hasPlanAccess('Premium') ? (
+                <ExclusiveFeatures onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Exclusive Features",
+                  description: "Access exclusive features",
+                  requiredPlan: "Premium",
+                  icon: <Lightbulb className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Personalized Courses */}
+            <Route path="/courses" element={
+              hasPlanAccess('Premium') ? (
+                <PersonalizedCourses onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "Personalized Courses",
+                  description: "AI-curated learning paths",
+                  requiredPlan: "Premium",
+                  icon: <GraduationCap className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* API Access */}
+            <Route path="/api" element={
+              hasPlanAccess('Premium') ? (
+                <APIAccess onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "API Access",
+                  description: "Developer API access",
+                  requiredPlan: "Premium",
+                  icon: <Globe className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* White Label */}
+            <Route path="/white-label" element={
+              hasPlanAccess('Premium') ? (
+                <WhiteLabel onUpgrade={() => setPaymentOpen(true)} />
+              ) : (
+                <LockedFeature featureInfo={{
+                  name: "White Label",
+                  description: "Custom branding options",
+                  requiredPlan: "Premium",
+                  icon: <Settings className="h-8 w-8" />
+                }} />
+              )
+            } />
+            
+            {/* Catch-all route for unknown paths */}
+            <Route path="*" element={
+              <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                <div className="p-6 text-center">
+                  <h2 className="text-xl font-semibold mb-4">Feature Not Found</h2>
+                  <p className="text-gray-600 mb-4">The requested feature could not be found.</p>
+                  <Button onClick={() => navigate('/dashboard')}>
+                    Back to Dashboard
                   </Button>
                 </div>
               </div>
-            </div>
-          )}
+            } />
+          </Routes>
         </div>
+      </div>
       </main>
       
       {/* Enhanced Payment Modal */}
@@ -1527,173 +1847,728 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
           plan={selectedPlan as UserPlan}
           onPay={handlePay}
           onChangePlan={handleChangePlan}
+          onDowngrade={handleDowngrade}
           isLoading={featureLoading}
+          currentPlan={user?.plan}
+          showDowngrade={true}
         />
       )}
-      
-      {/* Enhanced Mobile Floating Action Button */}
-      {isMobile && (
-        <div className="fixed bottom-20 right-4 z-30">
-          <Button
-            size="lg"
-            className="rounded-full shadow-lg w-16 h-16"
-            onClick={() => setCurrentFeature('quick-add')}
-            aria-label="Quick Add"
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        </div>
-      )}
-      
-      {/* Enhanced Mobile Bottom Navigation */}
-      {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 flex justify-around py-2 shadow-lg">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex flex-col items-center text-xs text-slate-700" 
-            onClick={() => handleFeatureNavigation('habits', 'habits')}
-          >
-            <BarChart3 className="h-5 w-5 mb-1" />
-            Habits
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex flex-col items-center text-xs text-slate-700" 
-            onClick={() => handleFeatureNavigation('tasks', 'tasks')}
-          >
-            <ClipboardList className="h-5 w-5 mb-1" />
-            Tasks
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex flex-col items-center text-xs text-slate-700" 
-            onClick={() => handleFeatureNavigation('challenges', 'challenges')}
-          >
-            <Users className="h-5 w-5 mb-1" />
-            Challenges
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex flex-col items-center text-xs text-slate-700" 
-            onClick={() => handleFeatureNavigation('sync', 'sync')}
-          >
-            <Cloud className="h-5 w-5 mb-1" />
-            Sync
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="flex flex-col items-center text-xs text-slate-700" 
-            onClick={() => handleFeatureNavigation('mobile', 'mobile')}
-          >
-            <MobileIcon className="h-5 w-5 mb-1" />
-            App
-          </Button>
-        </nav>
-      )}
-      
-      {/* Keyboard Shortcuts Modal */}
-      {showKeyboardShortcuts && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Keyboard Shortcuts</h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowKeyboardShortcuts(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Ctrl+K</span>
-                <span>Search</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Ctrl+B</span>
-                <span>Toggle Sidebar</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Ctrl+H</span>
-                <span>Habits</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Ctrl+T</span>
-                <span>Tasks</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Ctrl+M</span>
-                <span>Mood</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Ctrl+?</span>
-                <span>Show Shortcuts</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Cancellation Modal */}
-      {showCancellationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-red-900">Cancel Plan</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowCancellationModal(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+      {/* Settings Modal */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <SettingsIcon className="h-5 w-5" />
+              <span>Settings</span>
+            </DialogTitle>
+            <DialogDescription>
+              Manage your account settings and preferences
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="privacy">Privacy</TabsTrigger>
+              <TabsTrigger value="billing">Billing</TabsTrigger>
+              <TabsTrigger value="data">Data</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="profile" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={profileData.name}
+                    onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profileData.email}
+                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="avatar">Profile Picture</Label>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-lg">
+                        {profileData.name?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                    <Button variant="outline">Upload Photo</Button>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="notifications" className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Email Notifications</Label>
+                    <p className="text-sm text-gray-500">Receive notifications via email</p>
+                  </div>
+                  <Switch
+                    checked={profileData.notifications.email}
+                    onCheckedChange={(checked) => setProfileData({
+                      ...profileData,
+                      notifications: {...profileData.notifications, email: checked}
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Push Notifications</Label>
+                    <p className="text-sm text-gray-500">Receive push notifications</p>
+                  </div>
+                  <Switch
+                    checked={profileData.notifications.push}
+                    onCheckedChange={(checked) => setProfileData({
+                      ...profileData,
+                      notifications: {...profileData.notifications, push: checked}
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>SMS Notifications</Label>
+                    <p className="text-sm text-gray-500">Receive notifications via SMS</p>
+                  </div>
+                  <Switch
+                    checked={profileData.notifications.sms}
+                    onCheckedChange={(checked) => setProfileData({
+                      ...profileData,
+                      notifications: {...profileData.notifications, sms: checked}
+                    })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="privacy" className="space-y-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Public Profile</Label>
+                    <p className="text-sm text-gray-500">Allow others to see your profile</p>
+                  </div>
+                  <Switch
+                    checked={profileData.privacy.profilePublic}
+                    onCheckedChange={(checked) => setProfileData({
+                      ...profileData,
+                      privacy: {...profileData.privacy, profilePublic: checked}
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Share Progress</Label>
+                    <p className="text-sm text-gray-500">Share your progress with friends</p>
+                  </div>
+                  <Switch
+                    checked={profileData.privacy.shareProgress}
+                    onCheckedChange={(checked) => setProfileData({
+                      ...profileData,
+                      privacy: {...profileData.privacy, shareProgress: checked}
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Analytics</Label>
+                    <p className="text-sm text-gray-500">Allow analytics and improvements</p>
+                  </div>
+                  <Switch
+                    checked={profileData.privacy.allowAnalytics}
+                    onCheckedChange={(checked) => setProfileData({
+                      ...profileData,
+                      privacy: {...profileData.privacy, allowAnalytics: checked}
+                    })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="billing" className="space-y-4">
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold">Current Plan: {user.plan}</h4>
+                      {user.planExpiry && user.plan !== 'Free' && (
+                        <p className="text-sm text-gray-500">
+                          Expires: {new Date(user.planExpiry).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <Badge variant="secondary">{user.plan}</Badge>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Button 
+                    onClick={() => {
+                      setSelectedPlan('Premium');
+                      setPaymentOpen(true);
+                      setShowSettings(false);
+                    }}
+                    className="w-full"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade Plan
+                  </Button>
+                  {user.plan !== 'Free' && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setSelectedPlan('Free');
+                          setPaymentOpen(true);
+                          setShowSettings(false);
+                        }}
+                        className="w-full text-orange-600 hover:text-orange-700"
+                      >
+                        <ArrowDown className="h-4 w-4 mr-2" />
+                        Downgrade to Free
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setShowCancellationModal(true)}
+                        className="w-full text-red-600 hover:text-red-700"
+                      >
+                        Cancel Subscription
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="data" className="space-y-4">
+              <div className="space-y-4">
+                {/* Data Statistics */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-3">Data Statistics</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{getDataStats().habits}</div>
+                      <div className="text-sm text-gray-600">Habits</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{getDataStats().tasks}</div>
+                      <div className="text-sm text-gray-600">Tasks</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{getDataStats().piRewards}</div>
+                      <div className="text-sm text-gray-600">Pi Rewards</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">{getDataStats().backups}</div>
+                      <div className="text-sm text-gray-600">Backups</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm text-gray-500">
+                    Total data size: {(getDataStats().totalSize / 1024).toFixed(2)} KB
+                  </div>
+                </div>
+
+                {/* Export Data */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Download className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <Label className="text-base font-medium">Export Data</Label>
+                      <p className="text-sm text-gray-500">Export all your habits, tasks, and Pi rewards to a JSON file.</p>
+                    </div>
+                  </div>
+                  <Button onClick={handleExportData} disabled={isDataActionLoading} className="w-full">
+                    {isDataActionLoading ? (
+                      <Loader size="sm" message="Exporting..." />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Export Data
+                  </Button>
+                </div>
+
+                {/* Import Data */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Upload className="h-5 w-5 text-green-600" />
+                    <div>
+                      <Label htmlFor="import-file" className="text-base font-medium">Import Data</Label>
+                      <p className="text-sm text-gray-500">Import your habits, tasks, and Pi rewards from a JSON file.</p>
+                    </div>
+                  </div>
+                  <Input
+                    type="file"
+                    id="import-file"
+                    accept=".json"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleImportData(e.target.files[0]);
+                      }
+                    }}
+                    disabled={isDataActionLoading}
+                  />
+                </div>
+
+                {/* Create Backup */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Archive className="h-5 w-5 text-orange-600" />
+                    <div>
+                      <Label className="text-base font-medium">Create Backup</Label>
+                      <p className="text-sm text-gray-500">Create a backup of your current data to restore later.</p>
+                    </div>
+                  </div>
+                  <Button onClick={handleBackupData} disabled={isDataActionLoading} className="w-full">
+                    {isDataActionLoading ? (
+                      <Loader size="sm" message="Backing up..." />
+                    ) : (
+                      <Archive className="h-4 w-4 mr-2" />
+                    )}
+                    Create Backup
+                  </Button>
+                </div>
+
+                {/* Reset Data */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Trash2 className="h-5 w-5 text-red-600" />
+                    <div>
+                      <Label className="text-base font-medium">Reset Data</Label>
+                      <p className="text-sm text-gray-500">This action will permanently delete all your habits, tasks, and Pi rewards. This cannot be undone.</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="destructive" 
+                    onClick={triggerResetConfirmation} 
+                    disabled={isDataActionLoading}
+                    className="w-full"
+                  >
+                    {isDataActionLoading ? (
+                      <Loader size="sm" message="Resetting..." />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Reset Data
+                  </Button>
+                </div>
+
+                {/* Status Messages */}
+                {dataManagementStatus && (
+                  <div className={`mt-4 p-3 rounded-md ${
+                    dataManagementStatus.type === 'success' 
+                      ? 'bg-green-50 text-green-800 border border-green-200' 
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    <div className="flex items-center space-x-2">
+                      {dataManagementStatus.type === 'success' ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4" />
+                      )}
+                      <span>{dataManagementStatus.message}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setShowSettings(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              toast({
+                title: "Settings saved",
+                description: "Your settings have been updated successfully.",
+              });
+              setShowSettings(false);
+            }}>
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard Shortcuts Modal */}
+      <Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Keyboard className="h-5 w-5" />
+              <span>Keyboard Shortcuts</span>
+            </DialogTitle>
+            <DialogDescription>
+              Use these keyboard shortcuts to navigate faster
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h4 className="font-semibold text-gray-900">Navigation</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Go to Dashboard</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + D</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Go to Habits</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + H</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Go to Tasks</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + T</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Go to Analytics</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + A</kbd>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <h4 className="font-semibold text-gray-900">Actions</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Add New Item</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + N</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Search</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + K</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Settings</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + ,</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Help</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">F1</kbd>
+                  </div>
+                </div>
+              </div>
             </div>
             
-            <div className="space-y-4">
-              <div className="bg-red-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="h-5 w-5 text-red-600" />
-                  <span className="font-medium text-red-900">No Refund Policy</span>
+            <Separator />
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold text-gray-900">Quick Actions</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Mark Habit Complete</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Space</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Toggle Sidebar</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">Ctrl + B</kbd>
+                  </div>
                 </div>
-                <p className="text-sm text-red-700">
-                  By cancelling your plan, you acknowledge that no refunds will be issued for any remaining time on your current billing cycle.
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for cancellation (optional)
-                </label>
-                <textarea
-                  value={cancellationReason}
-                  onChange={(e) => setCancellationReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                  placeholder="Tell us why you're cancelling..."
-                  rows={3}
-                />
-              </div>
-              
-              <div className="flex gap-3">
-                <Button 
-                  onClick={handleCancelPlan}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                >
-                  Cancel Plan
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setShowCancellationModal(false)}
-                  className="flex-1"
-                >
-                  Keep Plan
-                </Button>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Refresh Data</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">F5</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Fullscreen</span>
+                    <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">F11</kbd>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+          
+          <div className="flex justify-end pt-4">
+            <Button onClick={() => setShowKeyboardShortcuts(false)}>
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancellation Modal */}
+      <Dialog open={showCancellationModal} onOpenChange={setShowCancellationModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel your subscription? You'll lose access to premium features.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="reason">Reason for cancellation (optional)</Label>
+              <textarea
+                id="reason"
+                value={cancellationReason}
+                onChange={(e) => setCancellationReason(e.target.value)}
+                className="w-full mt-2 p-3 border border-gray-300 rounded-md"
+                rows={3}
+                placeholder="Tell us why you're cancelling..."
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowCancellationModal(false)}>
+              Keep Subscription
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                toast({
+                  title: "Subscription cancelled",
+                  description: "Your subscription has been cancelled. You can reactivate anytime.",
+                });
+                setShowCancellationModal(false);
+              }}
+            >
+              Cancel Subscription
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Data Management Modal */}
+      <Dialog open={showDataManagementModal} onOpenChange={setShowDataManagementModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Database className="h-5 w-5" />
+              <span>Data Management</span>
+            </DialogTitle>
+            <DialogDescription>
+              Export, import, backup, and reset your application data.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="export" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="export">Export Data</TabsTrigger>
+              <TabsTrigger value="import">Import Data</TabsTrigger>
+              <TabsTrigger value="backup">Create Backup</TabsTrigger>
+              <TabsTrigger value="reset">Reset Data</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="export" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label>Export Data</Label>
+                  <p className="text-sm text-gray-500">Export all your habits, tasks, and Pi rewards to a JSON file.</p>
+                </div>
+                <Button onClick={handleExportData} disabled={isDataActionLoading}>
+                  {isDataActionLoading ? (
+                    <Loader size="sm" message="Exporting..." />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Export Data
+                </Button>
+                {dataManagementStatus && (
+                  <div className={`mt-4 p-3 rounded-md ${dataManagementStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                    {dataManagementStatus.message}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="import" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="import-file">Import Data</Label>
+                  <p className="text-sm text-gray-500">Import your habits, tasks, and Pi rewards from a JSON file.</p>
+                  <Input
+                    type="file"
+                    id="import-file"
+                    accept=".json"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        handleImportData(e.target.files[0]);
+                      }
+                    }}
+                    disabled={isDataActionLoading}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="backup" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label>Create Backup</Label>
+                  <p className="text-sm text-gray-500">Create a backup of your current data to restore later.</p>
+                </div>
+                <Button onClick={handleBackupData} disabled={isDataActionLoading}>
+                  {isDataActionLoading ? (
+                    <Loader size="sm" message="Backing up..." />
+                  ) : (
+                    <Archive className="h-4 w-4 mr-2" />
+                  )}
+                  Create Backup
+                </Button>
+                {dataManagementStatus && (
+                  <div className={`mt-4 p-3 rounded-md ${dataManagementStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                    {dataManagementStatus.message}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="reset" className="space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <Label>Reset Data</Label>
+                  <p className="text-sm text-gray-500">This action will permanently delete all your habits, tasks, and Pi rewards. This cannot be undone.</p>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  onClick={triggerResetConfirmation} 
+                  disabled={isDataActionLoading}
+                >
+                  {isDataActionLoading ? (
+                    <Loader size="sm" message="Resetting..." />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Reset Data
+                </Button>
+                {dataManagementStatus && (
+                  <div className={`mt-4 p-3 rounded-md ${dataManagementStatus.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                    {dataManagementStatus.message}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setShowDataManagementModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              toast({
+                title: "Data management complete",
+                description: "Your data management actions have been completed.",
+              });
+              setShowDataManagementModal(false);
+            }}>
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Data Confirmation Modal */}
+      <Dialog open={showResetConfirmation} onOpenChange={setShowResetConfirmation}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span>Confirm Data Reset</span>
+            </DialogTitle>
+            <DialogDescription>
+              This action will permanently delete all your data. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-red-800">Warning: Irreversible Action</h4>
+                  <p className="text-sm text-red-700 mt-1">
+                    This will permanently delete all your habits, tasks, Pi rewards, and backups. 
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <p className="text-sm text-gray-700 whitespace-pre-line">
+                {resetConfirmationText}
+              </p>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="confirm-reset"
+                className="rounded border-gray-300"
+                required
+              />
+              <label htmlFor="confirm-reset" className="text-sm text-gray-700">
+                I understand that this action cannot be undone
+              </label>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowResetConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleResetData}
+              disabled={isDataActionLoading}
+            >
+              {isDataActionLoading ? (
+                <Loader size="sm" message="Deleting..." />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete All Data
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mobile Footer Navigation */}
+      <MobileFooterNavigation 
+        onAddClick={() => {
+          // Handle add button click based on current route
+          const currentPath = location.pathname;
+          if (currentPath.includes('/habits')) {
+            // Open add habit form
+            toast({
+              title: "Add Habit",
+              description: "Click the 'Add Habit' button in the habit tracker to create a new habit.",
+            });
+          } else if (currentPath.includes('/tasks')) {
+            // Open add task form
+            toast({
+              title: "Add Task",
+              description: "Click the 'Add Task' button in the task manager to create a new task.",
+            });
+          } else {
+            // Default add action
+            toast({
+              title: "Quick Add",
+              description: "Navigate to a specific section to add items.",
+            });
+          }
+        }}
+        showAddButton={true}
+      />
     </div>
   );
 }; 

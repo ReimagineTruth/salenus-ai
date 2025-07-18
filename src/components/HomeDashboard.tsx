@@ -26,7 +26,7 @@ import {
   GraduationCap, 
   Globe, 
   Settings, 
-  Lock,
+  Key,
   Plus,
   TrendingUp,
   Target,
@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { PaymentModal } from '@/components/PaymentModal';
+import { MobileFooterNavigation } from '@/components/MobileFooterNavigation';
 import { useToast } from '@/hooks/use-toast';
 
 interface HomeDashboardProps {
@@ -332,9 +333,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
       Free: [
         { name: 'Free Habit Preview', icon: BarChart3, available: true },
         { name: 'Pi Network Integration', icon: Users, available: true },
-        { name: 'Basic Habit Tracking', icon: Lock, available: false },
-        { name: 'Task Management', icon: Lock, available: false },
-        { name: 'Community Challenges', icon: Lock, available: false }
+        { name: 'Basic Habit Tracking', icon: Key, available: false },
+        { name: 'Task Management', icon: ClipboardList, available: false },
+        { name: 'Community Challenges', icon: Users, available: false }
       ],
       Basic: [
         { name: 'Habit Tracking', icon: BarChart3, available: true },
@@ -343,8 +344,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
         { name: 'Cross-Platform Sync', icon: Cloud, available: true },
         { name: 'Mobile App Access', icon: Smartphone, available: true },
         { name: 'Basic Notifications', icon: Bell, available: true },
-        { name: 'Mood Tracking', icon: Lock, available: false },
-        { name: 'Smart Reminders', icon: Lock, available: false }
+        { name: 'Mood Tracking', icon: Heart, available: false },
+        { name: 'Smart Reminders', icon: Sparkles, available: false }
       ],
       Pro: [
         { name: 'Habit Tracking', icon: BarChart3, available: true },
@@ -354,15 +355,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
         { name: 'Mobile App Access', icon: Smartphone, available: true },
         { name: 'Basic Notifications', icon: Bell, available: true },
         { name: 'Mood Tracking', icon: Heart, available: true },
-        { name: 'Smart Reminders', icon: Bell, available: true },
+        { name: 'Smart Reminders', icon: Sparkles, available: true },
         { name: 'Advanced Goals', icon: Star, available: true },
         { name: 'Progress Photos', icon: Camera, available: true },
         { name: 'Custom Challenges', icon: Trophy, available: true },
         { name: 'Habit Journal', icon: BookOpen, available: true },
         { name: 'Streak Protection', icon: Flame, available: true },
         { name: 'Priority Support', icon: MessageSquare, available: true },
-        { name: 'AI Coaching', icon: Lock, available: false },
-        { name: 'Advanced Analytics', icon: Lock, available: false }
+        { name: 'AI Coaching', icon: Lightbulb, available: false },
+        { name: 'Advanced Analytics', icon: TrendingUp, available: false }
       ],
       Premium: [
         { name: 'Habit Tracking', icon: BarChart3, available: true },
@@ -372,7 +373,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
         { name: 'Mobile App Access', icon: Smartphone, available: true },
         { name: 'Basic Notifications', icon: Bell, available: true },
         { name: 'Mood Tracking', icon: Heart, available: true },
-        { name: 'Smart Reminders', icon: Bell, available: true },
+        { name: 'Smart Reminders', icon: Sparkles, available: true },
         { name: 'Advanced Goals', icon: Star, available: true },
         { name: 'Progress Photos', icon: Camera, available: true },
         { name: 'Custom Challenges', icon: Trophy, available: true },
@@ -659,7 +660,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
                     {feature.name}
                   </span>
                   {!feature.available && (
-                    <Lock className="w-4 h-4 text-slate-400 ml-auto" />
+                    <Key className="w-4 h-4 text-slate-400 ml-auto" />
                   )}
                 </div>
               ))}
@@ -723,6 +724,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
         onPay={handlePay}
         onChangePlan={handleChangePlan}
         isLoading={isLoading}
+      />
+
+      {/* Mobile Footer Navigation */}
+      <MobileFooterNavigation 
+        onAddClick={() => {
+          toast({
+            title: "Quick Add",
+            description: "Navigate to a specific section to add items.",
+          });
+        }}
+        showAddButton={true}
       />
     </div>
   );

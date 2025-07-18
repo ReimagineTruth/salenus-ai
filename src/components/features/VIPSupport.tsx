@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, Shield, MessageCircle, Phone, Mail, Clock, CheckCircle } from 'lucide-react';
+import { Key, Clock, ArrowUp, MessageCircle, Phone, Mail, CheckCircle } from 'lucide-react';
 
 export const VIPSupport: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -12,7 +12,7 @@ export const VIPSupport: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) 
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">VIP Support</h3>
           <p className="text-slate-500 mb-4">Get priority support with live chat and direct contact options.</p>
           <Button onClick={onUpgrade} className="bg-purple-600 hover:bg-purple-700">

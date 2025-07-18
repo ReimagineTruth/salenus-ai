@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, MessageSquare, Phone, Mail, Clock, CheckCircle, AlertCircle, Star, User, Calendar, Zap } from 'lucide-react';
+import { Key, Clock, MessageSquare, CheckCircle, Star, Phone, Mail, ArrowUp, Calendar, User, Zap } from 'lucide-react';
 
 export const PrioritySupport: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -61,7 +61,7 @@ export const PrioritySupport: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrad
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">Priority Support</h3>
           <p className="text-slate-500 mb-4">Get faster response times and dedicated support agents.</p>
           <Button onClick={onUpgrade} className="bg-indigo-600 hover:bg-indigo-700">

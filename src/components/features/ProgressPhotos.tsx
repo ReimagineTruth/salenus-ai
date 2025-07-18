@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, Camera, Plus, Upload, Calendar, Target, TrendingUp, Image, Download, Share, Edit, Trash } from 'lucide-react';
+import { Key, Camera, Target, TrendingUp, Calendar, Plus, Upload, Image, Edit, Trash, Download, Share, ArrowUp } from 'lucide-react';
 
 export const ProgressPhotos: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -75,7 +75,7 @@ export const ProgressPhotos: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">Progress Photos</h3>
           <p className="text-slate-500 mb-4">Track your physical progress with before/after photos and measurements.</p>
           <Button onClick={onUpgrade} className="bg-indigo-600 hover:bg-indigo-700">

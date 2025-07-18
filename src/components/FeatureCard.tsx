@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Lock, Check, ArrowUp, Loader2 } from 'lucide-react';
+import { Key, Check, ArrowUp, Loader2 } from 'lucide-react';
 import { UserPlan } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -119,7 +119,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
         {isLockedFeature && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
             <div className="text-center">
-              <Lock className="h-8 w-8 text-slate-400 mx-auto mb-2 animate-float" />
+                              <Key className="h-8 w-8 text-slate-400 mx-auto mb-2 animate-float" />
               <p className="text-sm text-slate-600 mb-2">Upgrade to {requiredPlan}</p>
               <Badge className={`${planColors[requiredPlan]} animate-glow`}>{planPrices[requiredPlan]}</Badge>
             </div>

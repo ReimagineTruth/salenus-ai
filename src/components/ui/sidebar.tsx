@@ -2,7 +2,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
-import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Lock, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Search, X, ChevronRight, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Home } from 'lucide-react'
+import { BarChart3, ClipboardList, Users, Cloud, Smartphone, Bell, Heart, Sparkles, Star, BookOpen, Camera, Trophy, Flame, MessageSquare, PieChart, Calendar, Shield, Lightbulb, GraduationCap, Globe, Settings, Search, X, ChevronRight, Keyboard, MousePointer, Monitor, Smartphone as MobileIcon, Home, Key } from 'lucide-react'
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -190,10 +190,12 @@ const allNavItems = [
 
 export const Sidebar = ({ 
   onLockedFeatureClick, 
-  userPlan = 'Free' 
+  userPlan = 'Free',
+  userPlanExpiry = null
 }: { 
   onLockedFeatureClick?: (feature: string, minPlan: string) => void;
   userPlan?: string;
+  userPlanExpiry?: Date | null;
 }) => {
   const isMobile = useIsMobile();
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -303,6 +305,14 @@ export const Sidebar = ({
             </Button>
           )}
         </div>
+        {userPlanExpiry && userPlan !== 'Free' && (
+          <div className="mt-2 text-xs text-slate-500">
+            Expires: {userPlanExpiry.toLocaleDateString()}
+            {new Date(userPlanExpiry) < new Date() && (
+              <span className="ml-2 text-red-500 font-medium">(Expired)</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Enhanced Search Bar */}
@@ -360,7 +370,7 @@ export const Sidebar = ({
                   >
                     {item.icon}
                     <span className="flex-1 text-left">{item.name}</span>
-                    <Lock className="h-4 w-4 text-slate-300" />
+                    <Key className="h-4 w-4 text-slate-300" />
                   </Button>
                 ) : (
                   <button
@@ -410,7 +420,7 @@ export const Sidebar = ({
                   >
                     {item.icon}
                     <span className="flex-1 text-left">{item.name}</span>
-                    <Lock className="h-4 w-4 text-slate-300" />
+                    <Key className="h-4 w-4 text-slate-300" />
                   </Button>
                 ) : (
                   <button
@@ -461,7 +471,7 @@ export const Sidebar = ({
                     >
                       {item.icon}
                       <span className="flex-1 text-left">{item.name}</span>
-                      <Lock className="h-4 w-4 text-slate-300" />
+                      <Key className="h-4 w-4 text-slate-300" />
                     </Button>
                   ) : (
                     <button
@@ -513,7 +523,7 @@ export const Sidebar = ({
                     >
                       {item.icon}
                       <span className="flex-1 text-left">{item.name}</span>
-                      <Lock className="h-4 w-4 text-slate-300" />
+                      <Key className="h-4 w-4 text-slate-300" />
                     </Button>
                   ) : (
                     <button
@@ -555,7 +565,7 @@ export const Sidebar = ({
               >
                 {item.icon}
                 <span className="flex-1 text-left">{item.name}</span>
-                <Lock className="h-4 w-4 text-slate-300" />
+                <Key className="h-4 w-4 text-slate-300" />
               </Button>
             ))}
             <Button
@@ -584,7 +594,7 @@ export const Sidebar = ({
               >
                 {item.icon}
                 <span className="flex-1 text-left">{item.name}</span>
-                <Lock className="h-4 w-4 text-slate-300" />
+                <Key className="h-4 w-4 text-slate-300" />
               </Button>
             ))}
             <Button

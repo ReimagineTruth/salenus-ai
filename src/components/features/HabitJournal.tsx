@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { Lock, ArrowUp, BookOpen, Plus, Edit, Trash, Calendar, Star, Lightbulb, Target, CheckCircle, Clock, TrendingUp } from 'lucide-react';
+import { Key, BookOpen, Star, TrendingUp, Lightbulb, ArrowUp, Plus, Calendar, Edit, Trash } from 'lucide-react';
 
 export const HabitJournal: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }) => {
   const { user, hasFeature } = useAuth();
@@ -99,7 +99,7 @@ export const HabitJournal: React.FC<{ onUpgrade?: () => void }> = ({ onUpgrade }
     return (
       <Card className="border-slate-200">
         <CardContent className="pt-6 text-center">
-          <Lock className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+          <Key className="h-12 w-12 text-slate-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-2">Habit Journal</h3>
           <p className="text-slate-500 mb-4">Advanced journaling with templates and reflection prompts.</p>
           <Button onClick={onUpgrade} className="bg-indigo-600 hover:bg-indigo-700">
