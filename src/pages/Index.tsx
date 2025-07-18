@@ -451,6 +451,19 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     setPaymentOpen(false);
     if (isUpgrade && user) {
       await upgradePlan(pendingPlan);
+      
+      // Show success message
+      toast({
+        title: "Payment Successful! 🎉",
+        description: `Welcome to the ${pendingPlan} plan! You now have access to all premium features.`,
+        duration: 4000,
+      });
+      
+      // Redirect to dashboard after payment
+      setTimeout(() => {
+        console.log('Redirecting to dashboard after payment...');
+        window.location.href = '/dashboard';
+      }, 1000);
     }
     setPendingPlan(null);
     setIsUpgrade(false);

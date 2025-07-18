@@ -257,9 +257,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
       await upgradePlan(selectedPlan);
       setPaymentOpen(false);
       toast({
-        title: "Plan Upgraded!",
-        description: `Successfully upgraded to ${selectedPlan} plan.`,
+        title: "Plan Upgraded! 🎉",
+        description: `Successfully upgraded to ${selectedPlan} plan. Welcome to premium features!`,
+        duration: 4000,
       });
+      
+      // Redirect to dashboard after successful upgrade
+      setTimeout(() => {
+        console.log('Redirecting to dashboard after plan upgrade...');
+        window.location.href = '/dashboard';
+      }, 1000);
     } catch (error) {
       toast({
         title: "Upgrade Failed",

@@ -194,10 +194,18 @@ const App = () => {
         duration: 4000,
       });
       
+      // Show redirect message
+      toast({
+        title: "Redirecting to Dashboard...",
+        description: "Taking you to your personalized dashboard where you can explore all your new features!",
+        duration: 3000,
+      });
+      
       // Redirect to dashboard after a short delay
       setTimeout(() => {
+        console.log('Redirecting to dashboard after payment completion...');
         window.location.href = '/dashboard';
-      }, 1000);
+      }, 1500);
       
     } catch (error) {
       console.error('Payment error:', error);

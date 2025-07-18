@@ -320,7 +320,15 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
         });
       }, 2000);
       
+      // Close payment modal
       setPaymentOpen(false);
+      
+      // Refresh the page to ensure all new features are loaded
+      setTimeout(() => {
+        console.log('Refreshing dashboard after plan upgrade...');
+        window.location.reload();
+      }, 1000);
+      
     } catch (error) {
       console.error('Mock payment error:', error);
       toast({
