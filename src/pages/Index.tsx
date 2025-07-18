@@ -52,6 +52,7 @@ import { DemoDashboard } from '@/components/DemoDashboard';
 import { CookieConsent } from '@/components/CookieConsent';
 import { useCookieConsent } from '@/hooks/useCookieConsent';
 import FooterPageLayout from '@/components/FooterPageLayout';
+import { toast } from '@/hooks/use-toast';
 
 interface IndexProps {
   user?: any;
@@ -470,12 +471,16 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   };
 
   const handleChoosePlan = (planName: string) => {
+    console.log('Index handleChoosePlan called with:', { planName, user, hasPaid });
+    
     if (user) {
-      // User is logged in, redirect to payment
-      navigate(`/payment?plan=${planName}`);
+      // User is logged in, show upgrade modal
+      console.log('User logged in, showing upgrade options');
+      navigate('/upgrade');
     } else {
-      // User is not logged in, redirect to signup with plan
-      navigate(`/signup?plan=${planName}`);
+      // User is not logged in, redirect to quick signup
+      console.log('User not logged in, redirecting to quick signup');
+      navigate('/signup');
     }
     setShowPlanSelection(false);
   };
@@ -486,12 +491,12 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
         // User has paid, they can access the dashboard
         navigate('/dashboard');
       } else {
-        // User is logged in but hasn't paid, redirect to payment
-        navigate(`/payment?plan=${planName}`);
+        // User is logged in but hasn't paid, show upgrade options
+        navigate('/upgrade');
       }
     } else {
-      // User is not logged in, redirect to signup with plan
-      navigate(`/signup?plan=${planName}`);
+      // User is not logged in, redirect to quick signup
+      navigate('/signup');
     }
   };
 
@@ -633,7 +638,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                 </a>
               </div>
               
-              {/* Enhanced User Section */}
+                                {/* Enhanced User Section */}
               {user ? (
                 <div className="flex items-center space-x-4 ml-8">
                   <div className="hidden xl:flex items-center space-x-3 bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-2 rounded-full border border-indigo-100">
@@ -643,27 +648,14 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   <span className={`text-xs px-3 py-1.5 rounded-full font-medium shadow-sm ${hasPaid ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200' : 'bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700 border border-orange-200'}`}>
                     {hasPaid ? `${selectedPlan} Plan` : 'Free Account'}
                   </span>
-                  {hasPaid && (
-                    <Button 
-                      size="sm"
-                      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-                      onClick={() => window.location.href = '/dashboard'}
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Dashboard
-                    </Button>
-                  )}
-                  {user && (
-                    <Button 
-                      size="sm"
-                      variant="outline"
-                      className="border-indigo-300 text-indigo-700 hover:bg-indigo-50 text-sm font-medium shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105"
-                      onClick={() => window.location.href = '/dashboard'}
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Dashboard
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm"
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                    onClick={() => window.location.href = '/dashboard'}
+                  >
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
                   {!hasPaid && (
                     <Button 
                       size="sm"
@@ -837,7 +829,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                       </Button>
                       <Button 
                         className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 py-4 text-base" 
-                        onClick={() => setShowLoginModal(true)}
+                        onClick={() => navigate('/login')}
                       >
                         <User className="h-5 w-5 mr-3" />
                         Sign In

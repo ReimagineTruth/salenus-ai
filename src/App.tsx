@@ -10,6 +10,10 @@ import NotFound from "./pages/NotFound";
 import { UserDashboard } from "./components/UserDashboard";
 import { HomeDashboard } from "./components/HomeDashboard";
 import { useAuth } from "./hooks/useAuth";
+import { QuickSignup } from "./components/QuickSignup";
+import { QuickSignin } from "./components/QuickSignin";
+import { ForgotPassword } from "./components/ForgotPassword";
+import { UpgradeModal } from "./components/UpgradeModal";
 import { supabase } from './lib/supabase';
 
 import FooterPageLayout from './components/FooterPageLayout';
@@ -144,25 +148,34 @@ const App = () => {
   };
 
   const handleChoosePlan = (plan: string, billing: string = 'monthly') => {
+    console.log('handleChoosePlan called with:', { plan, billing, user, authUser });
+    
     setSelectedPlan(plan);
     setPricingToggle(billing);
     
-    if (!user) {
-      // User is not logged in, redirect to signup
+    // Check both user and authUser to ensure we have the correct state
+    const isUserLoggedIn = user || authUser;
+    
+    if (!isUserLoggedIn) {
+      // User is not logged in, redirect to quick signup (no plan selection)
+      console.log('User not logged in, redirecting to quick signup');
       toast({
         title: "Welcome to Salenus A.I! 🎉",
-        description: `Let's get you set up with the ${plan} plan. Creating your account...`,
+        description: "Let's get you started with a free account. No payment required!",
         duration: 4000,
       });
       window.location.href = '/signup';
     } else {
-      // User is already logged in, redirect to payment for plan upgrade
+      // User is already logged in, show upgrade modal
+      console.log('User logged in, showing upgrade options');
+      const userName = user?.name || user?.email?.split('@')[0] || authUser?.email?.split('@')[0] || 'User';
       toast({
-        title: "Welcome to Salenus A.I! 🎉",
-        description: `Great to have you on board, ${user.name || user.email?.split('@')[0]}! Redirecting to payment...`,
+        title: "Ready to upgrade? 🚀",
+        description: `Great to see you're ready for more, ${userName}! Choose your plan...`,
         duration: 4000,
       });
-      window.location.href = '/payment';
+      // Show upgrade modal instead of redirecting
+      window.location.href = '/upgrade';
     }
   };
 
@@ -317,21 +330,49 @@ const App = () => {
               />
             } />
             
-            {/* Login page */}
+            {/* Quick signin page - new simplified workflow */}
             <Route path="/login" element={
               user ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <LoginPage onLogin={handleLogin} onSignup={handleSignup} />
+                <QuickSignin onSuccess={() => {
+                  console.log('Quick signin successful');
+                }} />
               )
             } />
             
-            {/* Signup page */}
+            {/* Quick signup page - new simplified workflow */}
             <Route path="/signup" element={
               user ? (
-                <Navigate to="/" replace />
+                <Navigate to="/dashboard" replace />
               ) : (
-                <LoginPage onLogin={handleLogin} onSignup={handleSignup} forceSignupMode={true} selectedPlan={selectedPlan} />
+                <QuickSignup onSuccess={() => {
+                  console.log('Quick signup successful');
+                }} />
+              )
+            } />
+            
+            {/* Forgot password page */}
+            <Route path="/forgot-password" element={
+              user ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <ForgotPassword />
+              )
+            } />
+            
+            {/* Upgrade modal page */}
+            <Route path="/upgrade" element={
+              user ? (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
+                  <UpgradeModal 
+                    isOpen={true} 
+                    onClose={() => window.location.href = '/dashboard'}
+                    currentPlan={user?.plan || 'Free'}
+                  />
+                </div>
+              ) : (
+                <Navigate to="/signup" replace />
               )
             } />
             
@@ -472,11 +513,51 @@ const App = () => {
             <Route path="/mobile" element={<Navigate to="/dashboard/mobile" replace />} />
             <Route path="/notifications" element={<Navigate to="/dashboard/notifications" replace />} />
             
+            {/* Catch-all route for unknown paths */}
+            <Route path="*" element={
+              <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-100 to-teal-100">
+                <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
+                  <img src="/logo.png" alt="Salenus A.I Logo" className="h-16 w-16 mx-auto mb-4 rounded-full" />
+                  <h1 className="text-2xl font-bold text-indigo-700 mb-2">Page Not Found</h1>
+                  <p className="text-slate-600 mb-6">The page you're looking for doesn't exist.</p>
+                  <button 
+                    onClick={() => window.location.href = '/'}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    Return to Home
+                  </button>
+                </div>
+              </div>
+            } />
+            
             {/* Test route for debugging */}
             <Route path="/test-dashboard" element={
               <div className="min-h-screen flex items-center justify-center bg-gray-100">
                 <div className="bg-white p-8 rounded-lg shadow-lg max-w-2xl">
                   <h1 className="text-2xl font-bold mb-4">Dashboard Debug</h1>
+                  
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold mb-2">Current State:</h2>
+                    <pre className="bg-gray-100 p-2 rounded text-sm">
+                      {JSON.stringify({ user, authUser, selectedPlan }, null, 2)}
+                    </pre>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <button 
+                      onClick={async () => {
+                        if (authUser) {
+                          const { fixMissingUser } = await import('@/lib/fix-user');
+                          const result = await fixMissingUser(authUser.id);
+                          console.log('Fix result:', result);
+                          window.location.reload();
+                        }
+                      }}
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                      Fix Missing User Record
+                    </button>
+                  </div>
                   
                   <div className="space-y-4">
                     <div className="bg-green-50 p-4 rounded-lg border border-green-200">

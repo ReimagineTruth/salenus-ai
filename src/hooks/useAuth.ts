@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { SupabaseService } from '@/lib/supabase-service';
+import { fixMissingUser } from '@/lib/fix-user';
 import type { User } from '@supabase/supabase-js';
 
 export type UserPlan = 'Free' | 'Basic' | 'Pro' | 'Premium';
@@ -116,25 +117,10 @@ export const useAuth = () => {
       console.log('loadUserData: Retrieved user from database:', appUser);
       
       if (!appUser) {
-        console.log('loadUserData: User not found in database, creating new user...');
-        // Create new user if they don't exist
-        const authUser = await supabase.auth.getUser();
-        if (authUser.data.user) {
-          console.log('loadUserData: Creating new user with data:', {
-            email: authUser.data.user.email,
-            name: authUser.data.user.user_metadata?.full_name || authUser.data.user.email!.split('@')[0],
-            plan: 'Free',
-            authUserId: authUserId
-          });
-          
-          appUser = await SupabaseService.createUser({
-            email: authUser.data.user.email!,
-            name: authUser.data.user.user_metadata?.full_name || authUser.data.user.email!.split('@')[0],
-            plan: 'Free',
-            authUserId: authUserId
-          });
-          console.log('loadUserData: Created new user:', appUser);
-        }
+        console.log('loadUserData: User not found in database, attempting to fix...');
+        // Try to fix the missing user record
+        appUser = await fixMissingUser(authUserId);
+        console.log('loadUserData: After fix attempt, user:', appUser);
       }
 
       if (appUser) {
@@ -154,9 +140,37 @@ export const useAuth = () => {
         setUser(userData);
       } else {
         console.error('loadUserData: Failed to load or create user data');
+        // Create a fallback user to prevent infinite redirects
+        const fallbackUser: AppUser = {
+          id: authUserId,
+          email: 'unknown@user.com',
+          name: 'Unknown User',
+          plan: 'Free' as UserPlan,
+          planExpiry: null,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          hasPaid: false,
+          avatarUrl: undefined
+        };
+        console.log('loadUserData: Setting fallback user:', fallbackUser);
+        setUser(fallbackUser);
       }
     } catch (error) {
       console.error('loadUserData: Error loading user data:', error);
+      // Create a fallback user to prevent infinite redirects
+      const fallbackUser: AppUser = {
+        id: authUserId,
+        email: 'error@user.com',
+        name: 'Error User',
+        plan: 'Free' as UserPlan,
+        planExpiry: null,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        hasPaid: false,
+        avatarUrl: undefined
+      };
+      console.log('loadUserData: Setting fallback user due to error:', fallbackUser);
+      setUser(fallbackUser);
     }
   };
 
