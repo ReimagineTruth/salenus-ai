@@ -24,7 +24,7 @@ export const useAuth = () => {
   const [authUser, setAuthUser] = useState<User | null>(null);
 
   // Mock authentication for testing
-  const useMockAuth = false; // Set to false to use real authentication
+  const useMockAuth = true; // Set to true to use mock authentication for testing
 
   // Initialize auth state
   useEffect(() => {
