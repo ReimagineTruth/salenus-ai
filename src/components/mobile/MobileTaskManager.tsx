@@ -1,72 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Plus, 
-  Check, 
-  X, 
+  ListTodo, 
   Calendar, 
-  Clock, 
   BarChart3, 
-  Target,
-  Lock,
-  ArrowUp,
+  Filter, 
+  Search, 
+  CheckCircle, 
+  Circle, 
+  Clock, 
+  Star, 
+  Camera, 
+  MessageSquare, 
+  MoreVertical,
+  ChevronRight,
+  RefreshCw,
   TrendingUp,
   Award,
   Zap,
-  List,
-  BookOpen,
-  Upload,
-  Image,
-  Bell,
-  Settings,
-  Download,
-  Share2,
-  Edit,
-  Trash2,
-  Camera,
-  FileText,
-  Star,
-  Trophy,
-  Activity,
-  Target as TargetIcon,
-  Users,
-  DollarSign,
-  ChevronRight,
-  ChevronLeft,
-  RefreshCw,
-  Filter,
-  Search,
-  MoreVertical,
-  AlertTriangle,
-  CheckCircle,
-  Circle,
-  Flag,
-  Tag,
-  Folder,
-  SortAsc,
-  SortDesc,
-  Briefcase,
-  User,
   Heart,
-  Home,
+  BookOpen,
+  Settings,
+  Share2,
+  Download,
+  Upload,
   Timer,
-  Play,
-  Pause,
-  Square,
-  ClipboardList
+  AlertCircle,
+  CheckSquare,
+  Square
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { DataService } from '@/lib/data-service';
-import type { Task as SupabaseTask, TaskNote as SupabaseTaskNote } from '@/lib/supabase';
 
 interface Task {
   id: string;
@@ -76,54 +48,54 @@ interface Task {
   priority: 'Low' | 'Medium' | 'High' | 'Urgent';
   status: 'Todo' | 'In Progress' | 'Review' | 'Done';
   category: string;
-  dueDate?: Date;
-  createdAt: Date;
-  completedAt?: Date;
-  estimatedTime?: number; // in minutes
-  actualTime?: number; // in minutes
+  dueDate: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  estimatedTime: number | null;
+  actualTime: number | null;
   tags: string[];
-  attachments: string[];
   notes: string[];
-  assignee?: string;
-  reminderTime?: string;
+  assignee: string | null;
+  reminderTime: string | null;
   reminderEnabled: boolean;
-  recurring?: 'Daily' | 'Weekly' | 'Monthly' | 'None';
-  subtasks: { id: string; title: string; completed: boolean }[];
-  timeSpent: number; // in minutes
-  lastUpdated: Date;
+  recurring: 'Daily' | 'Weekly' | 'Monthly' | 'None';
+  subtasks: any[];
+  timeSpent: number;
+  lastUpdated: string;
 }
 
 interface TaskNote {
   id: string;
   taskId: string;
   content: string;
-  date: Date;
+  date: string;
   type: 'note' | 'comment' | 'update';
-  author?: string;
+  author: string | null;
 }
 
 export const MobileTaskManager: React.FC = () => {
-  const { user, hasFeature, upgradePlan } = useAuth();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<TaskNote[]>([]);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('board');
+  const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedPriority, setSelectedPriority] = useState('All');
+  const [showAddForm, setShowAddForm] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
-  const [timerActive, setTimerActive] = useState<string | null>(null);
-  const [timers, setTimers] = useState<{[key: string]: number}>({});
+  const [pullToRefreshY, setPullToRefreshY] = useState(0);
+
+  // Touch gesture refs
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
 
   const categories = ['All', 'Work', 'Personal', 'Health', 'Learning', 'Finance', 'Home', 'Social'];
-  const statuses = ['All', 'Todo', 'In Progress', 'Review', 'Done'];
-  const priorities = ['All', 'Low', 'Medium', 'High', 'Urgent'];
+  const priorities = ['Low', 'Medium', 'High', 'Urgent'];
+  const statuses = ['Todo', 'In Progress', 'Review', 'Done'];
 
   // Real-time clock
   useEffect(() => {
@@ -133,19 +105,6 @@ export const MobileTaskManager: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Timer for active tasks
-  useEffect(() => {
-    if (timerActive) {
-      const interval = setInterval(() => {
-        setTimers(prev => ({
-          ...prev,
-          [timerActive]: (prev[timerActive] || 0) + 1
-        }));
-      }, 60000); // Update every minute
-      return () => clearInterval(interval);
-    }
-  }, [timerActive]);
-
   // Load tasks from Supabase
   useEffect(() => {
     if (user?.id) {
@@ -154,262 +113,375 @@ export const MobileTaskManager: React.FC = () => {
   }, [user?.id]);
 
   const loadTasks = async () => {
-    if (!user?.id) return;
-    
     setLoading(true);
     try {
-      const supabaseTasks = await DataService.getTasks(user.id);
-      const transformedTasks: Task[] = supabaseTasks.map(task => ({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        completed: task.completed,
-        priority: task.priority,
-        status: task.status,
-        category: task.category,
-        dueDate: task.due_date ? new Date(task.due_date) : undefined,
-        createdAt: new Date(task.created_at),
-        completedAt: task.completed_at ? new Date(task.completed_at) : undefined,
-        estimatedTime: task.estimated_time,
-        actualTime: task.actual_time,
-        tags: task.tags,
-        attachments: task.attachments,
-        notes: task.notes,
-        assignee: task.assignee,
-        reminderTime: task.reminder_time,
-        reminderEnabled: task.reminder_enabled,
-        recurring: task.recurring,
-        subtasks: task.subtasks,
-        timeSpent: task.time_spent,
-        lastUpdated: new Date(task.last_updated)
-      }));
-      setTasks(transformedTasks);
+      // Simulate loading tasks
+      const mockTasks: Task[] = [
+        {
+          id: '1',
+          title: 'Complete Project Review',
+          description: 'Review and finalize the quarterly project report',
+          completed: false,
+          priority: 'High',
+          status: 'In Progress',
+          category: 'Work',
+          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          estimatedTime: 120,
+          actualTime: 45,
+          tags: ['work', 'review', 'project'],
+          notes: [],
+          assignee: 'John Doe',
+          reminderTime: '09:00',
+          reminderEnabled: true,
+          recurring: 'None',
+          subtasks: [],
+          timeSpent: 45,
+          lastUpdated: new Date().toISOString()
+        },
+        {
+          id: '2',
+          title: 'Morning Exercise',
+          description: '30 minutes of cardio or strength training',
+          completed: true,
+          priority: 'Medium',
+          status: 'Done',
+          category: 'Health',
+          dueDate: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          completedAt: new Date().toISOString(),
+          estimatedTime: 30,
+          actualTime: 35,
+          tags: ['health', 'exercise', 'morning'],
+          notes: [],
+          assignee: null,
+          reminderTime: '07:00',
+          reminderEnabled: true,
+          recurring: 'Daily',
+          subtasks: [],
+          timeSpent: 35,
+          lastUpdated: new Date().toISOString()
+        },
+        {
+          id: '3',
+          title: 'Read Chapter 5',
+          description: 'Read and take notes on chapter 5 of the book',
+          completed: false,
+          priority: 'Low',
+          status: 'Todo',
+          category: 'Learning',
+          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          estimatedTime: 60,
+          actualTime: null,
+          tags: ['learning', 'reading', 'education'],
+          notes: [],
+          assignee: null,
+          reminderTime: '20:00',
+          reminderEnabled: false,
+          recurring: 'None',
+          subtasks: [],
+          timeSpent: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      ];
+      
+      setTasks(mockTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load tasks. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   // Handle pull-to-refresh
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const startY = touchStartRef.current.y;
+    const deltaY = currentY - startY;
+    
+    // Only allow pull-to-refresh if at top of page
+    if (window.scrollY === 0 && deltaY > 0) {
+      setPullToRefreshY(Math.min(deltaY * 0.5, 100));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (pullToRefreshY > 50) {
+      handleRefresh();
+    }
+    setPullToRefreshY(0);
+    touchStartRef.current = null;
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      loadTasks();
+    loadTasks().finally(() => {
       setIsRefreshing(false);
-    }, 1000);
+    });
   };
 
-  // Handle swipe gestures
-  const handleSwipe = (taskId: string, direction: 'left' | 'right') => {
-    setSwipeDirection(direction);
-    setTimeout(() => setSwipeDirection(null), 300);
+  // Handle swipe gestures for tasks
+  const handleTaskSwipe = (taskId: string, direction: 'left' | 'right') => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
 
     if (direction === 'right') {
-      // Mark as completed
-      toggleTask(taskId);
+      // Complete task
+      completeTask(taskId);
     } else if (direction === 'left') {
-      // Show details
-      const task = tasks.find(t => t.id === taskId);
-      if (task) {
-        setSelectedTask(task);
-        setShowTaskDetails(true);
-      }
+      // View details
+      setSelectedTask(task);
+      setShowTaskDetails(true);
     }
   };
 
-  const toggleTask = async (taskId: string) => {
+  const completeTask = async (taskId: string) => {
     try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
+      setTasks(prev => prev.map(task => 
+        task.id === taskId 
+          ? { 
+              ...task, 
+              completed: true, 
+              status: 'Done',
+              completedAt: new Date().toISOString(),
+              lastUpdated: new Date().toISOString()
+            }
+          : task
+      ));
 
-      const completed = !task.completed;
-      const updatedTask = await DataService.toggleTaskCompletion(taskId, completed);
-      
-      if (updatedTask) {
-        await loadTasks();
-      }
+      toast({
+        title: "Task Completed! ✅",
+        description: "Great job! Task marked as done.",
+      });
     } catch (error) {
-      console.error('Error toggling task:', error);
+      console.error('Error completing task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete task. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const toggleTimer = (taskId: string) => {
-    if (timerActive === taskId) {
-      setTimerActive(null);
-      // Update task with time spent
-      const task = tasks.find(t => t.id === taskId);
-      if (task) {
-        const timeSpent = timers[taskId] || 0;
-        DataService.updateTask(taskId, {
-          time_spent: (task.timeSpent || 0) + timeSpent
-        });
-      }
-    } else {
-      setTimerActive(taskId);
+  const addTask = async (taskData: Partial<Task>) => {
+    try {
+      const newTask: Task = {
+        id: Date.now().toString(),
+        title: taskData.title || '',
+        description: taskData.description || '',
+        completed: false,
+        priority: taskData.priority || 'Medium',
+        status: 'Todo',
+        category: taskData.category || 'Work',
+        dueDate: taskData.dueDate || null,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+        estimatedTime: taskData.estimatedTime || null,
+        actualTime: null,
+        tags: taskData.tags || [],
+        notes: [],
+        assignee: taskData.assignee || null,
+        reminderTime: null,
+        reminderEnabled: false,
+        recurring: 'None',
+        subtasks: [],
+        timeSpent: 0,
+        lastUpdated: new Date().toISOString()
+      };
+
+      setTasks(prev => [...prev, newTask]);
+      setShowAddForm(false);
+
+      toast({
+        title: "Task Created! 📝",
+        description: "Your new task has been added successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const filteredTasks = tasks.filter(task => {
-    const matchesCategory = selectedCategory === 'All' || task.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'All' || task.status === selectedStatus;
-    const matchesPriority = selectedPriority === 'All' || task.priority === selectedPriority;
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesStatus && matchesPriority && matchesSearch;
+    const matchesCategory = selectedCategory === 'All' || task.category === selectedCategory;
+    return matchesSearch && matchesCategory;
   });
 
-  const getPriorityIcon = (priority: string) => {
-    const icons: { [key: string]: React.ReactNode } = {
-      'Low': <Circle className="h-4 w-4 text-gray-400" />,
-      'Medium': <Circle className="h-4 w-4 text-yellow-500" />,
-      'High': <Circle className="h-4 w-4 text-orange-500" />,
-      'Urgent': <Circle className="h-4 w-4 text-red-500" />
-    };
-    return icons[priority] || <Circle className="h-4 w-4" />;
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'Urgent': return 'bg-red-100 text-red-800';
+      case 'High': return 'bg-orange-100 text-orange-800';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800';
+      case 'Low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      'Todo': 'bg-gray-100 text-gray-800',
-      'In Progress': 'bg-blue-100 text-blue-800',
-      'Review': 'bg-yellow-100 text-yellow-800',
-      'Done': 'bg-green-100 text-green-800'
+    switch (status) {
+      case 'Done': return 'bg-green-100 text-green-800';
+      case 'In Progress': return 'bg-blue-100 text-blue-800';
+      case 'Review': return 'bg-purple-100 text-purple-800';
+      case 'Todo': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTasksByStatus = () => {
+    const grouped = {
+      'Todo': filteredTasks.filter(t => t.status === 'Todo'),
+      'In Progress': filteredTasks.filter(t => t.status === 'In Progress'),
+      'Review': filteredTasks.filter(t => t.status === 'Review'),
+      'Done': filteredTasks.filter(t => t.status === 'Done')
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getPriorityColor = (priority: string) => {
-    const colors: { [key: string]: string } = {
-      'Low': 'bg-gray-100 text-gray-800',
-      'Medium': 'bg-blue-100 text-blue-800',
-      'High': 'bg-orange-100 text-orange-800',
-      'Urgent': 'bg-red-100 text-red-800'
-    };
-    return colors[priority] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: React.ReactNode } = {
-      'Work': <Briefcase className="h-4 w-4" />,
-      'Personal': <User className="h-4 w-4" />,
-      'Health': <Heart className="h-4 w-4" />,
-      'Learning': <BookOpen className="h-4 w-4" />,
-      'Finance': <DollarSign className="h-4 w-4" />,
-      'Home': <Home className="h-4 w-4" />,
-      'Social': <Users className="h-4 w-4" />
-    };
-    return icons[category] || <Folder className="h-4 w-4" />;
-  };
-
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
-  const isOverdue = (dueDate?: Date) => {
-    return dueDate && new Date(dueDate) < new Date();
+    return grouped;
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header with search and filters */}
-      <div className="sticky top-0 bg-white z-10 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-gray-900">Tasks</h1>
-            <Badge variant="secondary" className="text-xs">
-              {tasks.filter(t => t.completed).length}/{tasks.length}
-            </Badge>
+    <div 
+      className="min-h-screen bg-gray-50 pb-20"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {pullToRefreshY > 0 && (
+        <div 
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-blue-500 text-white py-2"
+          style={{ transform: `translateY(${pullToRefreshY}px)` }}
+        >
+          <RefreshCw className={`h-5 w-5 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Pull to refresh'}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <ListTodo className="h-6 w-6 text-blue-600" />
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">Task Manager</h1>
+              <p className="text-sm text-gray-500">
+                {currentTime.toLocaleTimeString()} • {filteredTasks.length} tasks
+              </p>
+            </div>
           </div>
+          
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              className="p-2"
             >
-              <Filter className="h-4 w-4" />
+              <Filter className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
+              onClick={() => setShowAddForm(true)}
+              className="p-2"
             >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <Plus className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search Bar */}
+        <div className="mt-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
 
-        {/* Filters */}
-        {showFilters && (
-          <div className="mb-4 space-y-3">
-            <div className="flex space-x-2 overflow-x-auto pb-2">
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  className="whitespace-nowrap"
-                >
-                  {getCategoryIcon(category)}
-                  <span className="ml-1">{category}</span>
-                </Button>
-              ))}
-            </div>
-            
-            <div className="flex space-x-2 overflow-x-auto pb-2">
-              {statuses.map((status) => (
-                <Button
-                  key={status}
-                  variant={selectedStatus === status ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedStatus(status)}
-                  className="whitespace-nowrap"
-                >
-                  {status}
-                </Button>
-              ))}
-            </div>
-            
-            <div className="flex space-x-2 overflow-x-auto pb-2">
-              {priorities.map((priority) => (
-                <Button
-                  key={priority}
-                  variant={selectedPriority === priority ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedPriority(priority)}
-                  className="whitespace-nowrap"
-                >
-                  {priority}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Category Filter */}
+        <div className="mt-3 flex space-x-2 overflow-x-auto">
+          {categories.map((category) => (
+            <Button
+              key={category}
+              variant={selectedCategory === category ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(category)}
+              className="whitespace-nowrap"
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
+      </div>
 
-        {/* View mode toggle */}
+      {/* Content */}
+      <div className="p-4 space-y-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Completed Today</p>
+                  <p className="text-2xl font-bold">
+                    {tasks.filter(t => t.completed && t.completedAt && 
+                      new Date(t.completedAt).toDateString() === new Date().toDateString()).length}
+                  </p>
+                </div>
+                <CheckCircle className="h-8 w-8" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Due Today</p>
+                  <p className="text-2xl font-bold">
+                    {tasks.filter(t => t.dueDate && 
+                      new Date(t.dueDate).toDateString() === new Date().toDateString()).length}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* View Mode Toggle */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-1">
+          <h2 className="text-lg font-semibold text-gray-900">Your Tasks</h2>
+          <div className="flex space-x-1">
             <Button
               variant={viewMode === 'list' ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode('list')}
             >
-              <List className="h-4 w-4" />
+              <ListTodo className="h-4 w-4" />
             </Button>
             <Button
               variant={viewMode === 'board' ? "default" : "outline"}
@@ -426,180 +498,141 @@ export const MobileTaskManager: React.FC = () => {
               <Calendar className="h-4 w-4" />
             </Button>
           </div>
-          
-          <Button
-            size="sm"
-            onClick={() => {/* Open add task form */}}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Task
-          </Button>
         </div>
-      </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div className="flex items-center justify-center py-8">
-          <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-600">Loading tasks...</span>
-        </div>
-      )}
-
-      {/* Tasks board view */}
-      {!loading && viewMode === 'board' && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {['Todo', 'In Progress', 'Review', 'Done'].map((status) => (
-            <div key={status} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{status}</h3>
-                <Badge variant="secondary" className="text-xs">
-                  {filteredTasks.filter(t => t.status === status).length}
-                </Badge>
-              </div>
-              
-              <div className="space-y-2">
-                {filteredTasks
-                  .filter(task => task.status === status)
-                  .map((task) => (
-                    <Card
+        {/* Tasks List/Board */}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <Card className="text-center py-8">
+            <CardContent>
+              <ListTodo className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No tasks found</h3>
+              <p className="text-gray-500 mb-4">
+                {searchQuery ? 'Try adjusting your search terms.' : 'Create your first task to get started!'}
+              </p>
+              <Button onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Button>
+            </CardContent>
+          </Card>
+        ) : viewMode === 'board' ? (
+          <div className="grid grid-cols-1 gap-4">
+            {Object.entries(getTasksByStatus()).map(([status, statusTasks]) => (
+              <div key={status} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">{status}</h3>
+                  <Badge variant="secondary">{statusTasks.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {statusTasks.map((task) => (
+                    <Card 
                       key={task.id}
-                      className={`transition-all duration-300 cursor-pointer hover:shadow-md ${
-                        swipeDirection === 'left' ? 'transform -translate-x-4' : 
-                        swipeDirection === 'right' ? 'transform translate-x-4' : ''
-                      } ${isOverdue(task.dueDate) ? 'border-red-200 bg-red-50' : ''}`}
-                      onClick={() => handleSwipe(task.id, 'left')}
+                      className={`transition-all duration-200 ${
+                        task.completed ? 'bg-green-50 border-green-200' : ''
+                      }`}
+                      onTouchStart={(e) => {
+                        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                      }}
+                      onTouchEnd={(e) => {
+                        if (!touchStartRef.current) return;
+                        const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+                        if (Math.abs(deltaX) > 50) {
+                          handleTaskSwipe(task.id, deltaX > 0 ? 'right' : 'left');
+                        }
+                        touchStartRef.current = null;
+                      }}
                     >
-                      <CardContent className="p-3">
+                      <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
-                              <h4 className="font-medium text-gray-900 text-sm">{task.title}</h4>
-                              {isOverdue(task.dueDate) && (
-                                <AlertTriangle className="h-4 w-4 text-red-500" />
+                              <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                              {task.completed && (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
                               )}
                             </div>
+                            <p className="text-sm text-gray-600 mb-3">{task.description}</p>
                             
-                            <p className="text-xs text-gray-600 mb-2 line-clamp-2">{task.description}</p>
-                            
-                            <div className="flex items-center space-x-2 mb-2">
-                              {getPriorityIcon(task.priority)}
-                              <Badge className={getCategoryColor(task.category)}>
+                            <div className="flex items-center space-x-2 mb-3">
+                              <Badge className={getPriorityColor(task.priority)}>
+                                {task.priority}
+                              </Badge>
+                              <Badge className={getStatusColor(task.status)}>
+                                {task.status}
+                              </Badge>
+                              <Badge variant="outline">
                                 {task.category}
                               </Badge>
-                              {task.dueDate && (
-                                <div className="flex items-center space-x-1">
-                                  <Calendar className="h-3 w-3 text-gray-400" />
-                                  <span className="text-xs text-gray-500">
-                                    {task.dueDate.toLocaleDateString()}
-                                  </span>
-                                </div>
-                              )}
                             </div>
 
-                            {/* Progress bar for subtasks */}
-                            {task.subtasks.length > 0 && (
-                              <div className="mb-2">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs text-gray-500">Subtasks</span>
-                                  <span className="text-xs font-medium">
-                                    {task.subtasks.filter(st => st.completed).length}/{task.subtasks.length}
-                                  </span>
-                                </div>
-                                <Progress 
-                                  value={(task.subtasks.filter(st => st.completed).length / task.subtasks.length) * 100} 
-                                  className="h-1"
-                                />
-                              </div>
-                            )}
-
-                            {/* Time tracking */}
-                            {task.timeSpent > 0 && (
-                              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                                <Clock className="h-3 w-3" />
-                                <span>{formatTime(task.timeSpent)}</span>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                {task.dueDate && (
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar className="h-4 w-4 text-gray-500" />
+                                    <span className="text-sm text-gray-600">
+                                      {new Date(task.dueDate).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                )}
                                 {task.estimatedTime && (
-                                  <>
-                                    <span>/</span>
-                                    <span>{formatTime(task.estimatedTime)}</span>
-                                  </>
+                                  <div className="flex items-center space-x-1">
+                                    <Timer className="h-4 w-4 text-gray-500" />
+                                    <span className="text-sm text-gray-600">
+                                      {task.estimatedTime}m
+                                    </span>
+                                  </div>
                                 )}
                               </div>
-                            )}
-                          </div>
-
-                          {/* Quick action buttons */}
-                          <div className="flex flex-col space-y-1 ml-2">
-                            <Button
-                              variant={task.completed ? "outline" : "default"}
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTask(task.id);
-                              }}
-                              className={`h-6 w-6 p-0 ${
-                                task.completed 
-                                  ? 'border-green-500 text-green-600 hover:bg-green-50' 
-                                  : 'bg-green-600 hover:bg-green-700'
-                              }`}
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTimer(task.id);
-                              }}
-                              className={`h-6 w-6 p-0 ${
-                                timerActive === task.id ? 'text-red-600' : 'text-gray-600'
-                              }`}
-                            >
-                              {timerActive === task.id ? (
-                                <Pause className="h-3 w-3" />
-                              ) : (
-                                <Play className="h-3 w-3" />
-                              )}
-                            </Button>
+                              
+                              <Button
+                                variant={task.completed ? "outline" : "default"}
+                                size="sm"
+                                onClick={() => completeTask(task.id)}
+                                disabled={task.completed}
+                              >
+                                {task.completed ? 'Completed' : 'Complete'}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tasks list view */}
-      {!loading && viewMode === 'list' && (
-        <div className="space-y-3">
-          {filteredTasks.length === 0 ? (
-            <Card className="text-center py-8">
-              <CardContent>
-                <ClipboardList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No tasks found</h3>
-                <p className="text-gray-600 mb-4">
-                  {searchQuery ? 'Try adjusting your search terms.' : 'Create your first task to get started!'}
-                </p>
-                <Button onClick={() => {/* Open add task form */}}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Task
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredTasks.map((task) => (
-              <Card
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredTasks.map((task) => (
+              <Card 
                 key={task.id}
-                className={`transition-all duration-300 cursor-pointer hover:shadow-md ${
-                  swipeDirection === 'left' ? 'transform -translate-x-4' : 
-                  swipeDirection === 'right' ? 'transform translate-x-4' : ''
-                } ${isOverdue(task.dueDate) ? 'border-red-200 bg-red-50' : ''}`}
-                onClick={() => handleSwipe(task.id, 'left')}
+                className={`transition-all duration-200 ${
+                  task.completed ? 'bg-green-50 border-green-200' : ''
+                }`}
+                onTouchStart={(e) => {
+                  touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }}
+                onTouchEnd={(e) => {
+                  if (!touchStartRef.current) return;
+                  const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+                  if (Math.abs(deltaX) > 50) {
+                    handleTaskSwipe(task.id, deltaX > 0 ? 'right' : 'left');
+                  }
+                  touchStartRef.current = null;
+                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
@@ -607,263 +640,194 @@ export const MobileTaskManager: React.FC = () => {
                       <div className="flex items-center space-x-2 mb-2">
                         <h3 className="font-semibold text-gray-900">{task.title}</h3>
                         {task.completed && (
-                          <Badge className="bg-green-100 text-green-800">
-                            <Check className="h-3 w-3 mr-1" />
-                            Done
-                          </Badge>
-                        )}
-                        {isOverdue(task.dueDate) && (
-                          <Badge className="bg-red-100 text-red-800">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            Overdue
-                          </Badge>
+                          <CheckCircle className="h-5 w-5 text-green-600" />
                         )}
                       </div>
-                      
                       <p className="text-sm text-gray-600 mb-3">{task.description}</p>
                       
-                      <div className="flex items-center space-x-4 mb-3">
-                        <Badge className={getStatusColor(task.status)}>
-                          {task.status}
-                        </Badge>
+                      <div className="flex items-center space-x-2 mb-3">
                         <Badge className={getPriorityColor(task.priority)}>
                           {task.priority}
                         </Badge>
-                        <Badge className="bg-gray-100 text-gray-800">
+                        <Badge className={getStatusColor(task.status)}>
+                          {task.status}
+                        </Badge>
+                        <Badge variant="outline">
                           {task.category}
                         </Badge>
                       </div>
 
-                      {/* Due date and time tracking */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           {task.dueDate && (
                             <div className="flex items-center space-x-1">
-                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <Calendar className="h-4 w-4 text-gray-500" />
                               <span className="text-sm text-gray-600">
-                                {task.dueDate.toLocaleDateString()}
+                                {new Date(task.dueDate).toLocaleDateString()}
                               </span>
                             </div>
                           )}
-                          
-                          {task.timeSpent > 0 && (
+                          {task.estimatedTime && (
                             <div className="flex items-center space-x-1">
-                              <Clock className="h-4 w-4 text-gray-400" />
+                              <Timer className="h-4 w-4 text-gray-500" />
                               <span className="text-sm text-gray-600">
-                                {formatTime(task.timeSpent)}
+                                {task.estimatedTime}m
                               </span>
                             </div>
                           )}
                         </div>
-
-                        {/* Timer indicator */}
-                        {timerActive === task.id && (
-                          <div className="flex items-center space-x-1 text-red-600">
-                            <Timer className="h-4 w-4 animate-pulse" />
-                            <span className="text-sm font-medium">
-                              {formatTime(timers[task.id] || 0)}
-                            </span>
-                          </div>
-                        )}
+                        
+                        <Button
+                          variant={task.completed ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => completeTask(task.id)}
+                          disabled={task.completed}
+                        >
+                          {task.completed ? 'Completed' : 'Complete'}
+                        </Button>
                       </div>
                     </div>
-
-                    {/* Quick action button */}
-                    <Button
-                      variant={task.completed ? "outline" : "default"}
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleTask(task.id);
-                      }}
-                      className={`ml-3 ${
-                        task.completed 
-                          ? 'border-green-500 text-green-600 hover:bg-green-50' 
-                          : 'bg-green-600 hover:bg-green-700'
-                      }`}
-                    >
-                      {task.completed ? <Check className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Swipe instructions */}
-      <div className="text-center py-4 text-sm text-gray-500">
-        <p>Swipe right to complete • Swipe left for details</p>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Task details modal */}
-      {showTaskDetails && selectedTask && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Task Details</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowTaskDetails(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <MobileTaskDetails
-                task={selectedTask}
-                onClose={() => setShowTaskDetails(false)}
-                onUpdate={loadTasks}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Mobile Task Details Component
-const MobileTaskDetails: React.FC<{
-  task: Task;
-  onClose: () => void;
-  onUpdate: () => void;
-}> = ({ task, onClose, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState('overview');
-
-  const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
-  const isOverdue = (dueDate?: Date) => {
-    return dueDate && new Date(dueDate) < new Date();
-  };
-
-  return (
-    <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
+      {/* Add Task Dialog */}
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Task</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{task.title}</h3>
-              <p className="text-gray-600 mb-4">{task.description}</p>
+              <label className="text-sm font-medium">Task Title</label>
+              <Input placeholder="e.g., Complete project review" />
             </div>
-            
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Textarea placeholder="Describe your task..." />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-500">{task.status}</div>
-                <div className="text-xs text-gray-500">Status</div>
+              <div>
+                <label className="text-sm font-medium">Category</label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.filter(c => c !== 'All').map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-500">{task.priority}</div>
-                <div className="text-xs text-gray-500">Priority</div>
+              <div>
+                <label className="text-sm font-medium">Priority</label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priorities.map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        {priority}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Category</span>
-                <Badge>{task.category}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Due Date</span>
-                <span className="text-sm font-medium">
-                  {task.dueDate ? task.dueDate.toLocaleDateString() : 'No due date'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Time Spent</span>
-                <span className="text-sm font-medium">
-                  {formatTime(task.timeSpent)}
-                </span>
-              </div>
-              {task.estimatedTime && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Estimated Time</span>
-                  <span className="text-sm font-medium">
-                    {formatTime(task.estimatedTime)}
-                  </span>
-                </div>
-              )}
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                addTask({
+                  title: 'New Task',
+                  description: 'Description',
+                  category: 'Work',
+                  priority: 'Medium',
+                  estimatedTime: 60
+                });
+              }}>
+                Create Task
+              </Button>
             </div>
-
-            {isOverdue(task.dueDate) && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                  <span className="text-sm font-medium text-red-700">This task is overdue</span>
-                </div>
-              </div>
-            )}
           </div>
-        </TabsContent>
+        </DialogContent>
+      </Dialog>
 
-        <TabsContent value="progress" className="space-y-4">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900">Subtasks Progress</h4>
-            {task.subtasks.length > 0 ? (
-              <div className="space-y-3">
-                {task.subtasks.map((subtask, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <Checkbox checked={subtask.completed} />
-                    <span className={`text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                      {subtask.title}
+      {/* Task Details Dialog */}
+      <Dialog open={showTaskDetails} onOpenChange={setShowTaskDetails}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedTask?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedTask && (
+            <div className="space-y-4">
+              <p className="text-gray-600">{selectedTask.description}</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {selectedTask.estimatedTime || 0}m
+                  </p>
+                  <p className="text-sm text-blue-600">Estimated</p>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">
+                    {selectedTask.timeSpent || 0}m
+                  </p>
+                  <p className="text-sm text-green-600">Time Spent</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Status</span>
+                  <Badge className={getStatusColor(selectedTask.status)}>
+                    {selectedTask.status}
+                  </Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Priority</span>
+                  <Badge className={getPriorityColor(selectedTask.priority)}>
+                    {selectedTask.priority}
+                  </Badge>
+                </div>
+                {selectedTask.dueDate && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Due Date</span>
+                    <span className="text-sm font-medium">
+                      {new Date(selectedTask.dueDate).toLocaleDateString()}
                     </span>
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <List className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p>No subtasks yet</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
-        <TabsContent value="notes" className="space-y-4">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900">Task Notes</h4>
-            {task.notes.length > 0 ? (
-              <div className="space-y-3">
-                {task.notes.map((note, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-3">
-                      <p className="text-sm text-gray-700">{note}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="flex space-x-2">
+                <Button variant="outline" className="flex-1">
+                  <Camera className="h-4 w-4 mr-2" />
+                  Photo
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Note
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p>No notes yet</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      <div className="flex space-x-3 pt-4">
-        <Button variant="outline" onClick={onClose} className="flex-1">
-          Close
-        </Button>
-        <Button onClick={onUpdate} className="flex-1">
-          Update
-        </Button>
-      </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }; 

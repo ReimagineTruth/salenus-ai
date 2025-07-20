@@ -58,6 +58,8 @@ export const PiAuthButton: React.FC<PiAuthButtonProps> = ({
       // Store authentication data
       piService.setCurrentAuth(auth);
       
+      console.log('Auth data stored successfully:', auth);
+      
       setIsAuthenticated(true);
       
       // Show success message

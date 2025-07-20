@@ -33,6 +33,7 @@ export interface PiAuth {
     uid: string;
     username: string;
     roles: string[];
+    m?: any; // Additional properties that might be returned by Pi SDK
   };
 }
 
@@ -73,7 +74,7 @@ export class PiNetworkService {
 
   private constructor() {
     // Initialize with your API key from environment or config
-    this.apiKey = import.meta.env.VITE_PI_API_KEY || '';
+    this.apiKey = import.meta.env.VITE_PI_API_KEY || 'giynqmyzwzxpgks0xoevamcbpwfonpjq0fmzxb1vye0itgiuv0sxoqkbd0qtpx79';
   }
 
   public static getInstance(): PiNetworkService {
@@ -86,7 +87,11 @@ export class PiNetworkService {
   // Initialize Pi SDK
   public init(): void {
     if (typeof window !== 'undefined' && window.Pi) {
+      console.log('Initializing Pi SDK in sandbox mode...');
       window.Pi.init({ version: "2.0", sandbox: true });
+      console.log('Pi SDK initialized successfully');
+    } else {
+      console.warn('Pi SDK not available for initialization');
     }
   }
 
@@ -239,6 +244,26 @@ export class PiNetworkService {
   // Get current auth data
   public getCurrentAuth(): PiAuth | null {
     return this.currentAuth;
+  }
+
+  // Set current auth data
+  public setCurrentAuth(auth: PiAuth): void {
+    try {
+      console.log('Setting Pi auth data:', auth);
+      this.currentAuth = auth;
+      this.isAuthenticated = true;
+      console.log('Pi auth data set successfully');
+    } catch (error) {
+      console.error('Error setting Pi auth data:', error);
+      throw error;
+    }
+  }
+
+  // Clear auth data
+  public clearAuth(): void {
+    this.currentAuth = null;
+    this.isAuthenticated = false;
+    console.log('Pi auth data cleared');
   }
 
   // Set API key

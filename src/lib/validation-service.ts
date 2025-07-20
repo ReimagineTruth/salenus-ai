@@ -6,7 +6,7 @@ export interface ValidationResult {
 
 export class ValidationService {
   private static instance: ValidationService;
-  private validationUrl = 'https://salenus.xyz/validation-key.txt';
+  private validationUrl = 'http://localhost:3000/validation-key.txt';
   private fallbackKey = 'e7021c2ab1db83cf757d65568cf833a8244885a3b9061b4b5601b095fdec8225de72078c49f9cf5d6211ced3a5e541dd54c6c57ebb450f0d30790415be2303d2';
   private cache: Map<string, ValidationResult> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes

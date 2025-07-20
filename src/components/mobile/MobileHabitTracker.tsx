@@ -1,92 +1,68 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Plus, 
-  Check, 
-  X, 
-  Flame, 
+  Target, 
   Calendar, 
   BarChart3, 
-  Target,
-  Lock,
-  ArrowUp,
+  Filter, 
+  Search, 
+  CheckCircle, 
+  Circle, 
+  Clock, 
+  Flame, 
+  Star, 
+  Camera, 
+  MessageSquare, 
+  MoreVertical,
+  ChevronRight,
+  RefreshCw,
   TrendingUp,
-  Clock,
   Award,
   Zap,
-  List,
-  BookOpen,
-  Upload,
-  Image,
-  Bell,
-  Settings,
-  Download,
-  Share2,
-  Edit,
-  Trash2,
-  Camera,
-  FileText,
-  Star,
-  Trophy,
-  Activity,
-  Target as TargetIcon,
-  Users,
-  DollarSign,
-  ChevronRight,
-  ChevronLeft,
-  RefreshCw,
-  Filter,
-  Search,
-  MoreVertical,
   Heart,
-  Smile,
-  Frown,
-  Meh
+  BookOpen,
+  Settings,
+  Share2,
+  Download,
+  Upload
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { DataService } from '@/lib/data-service';
-import type { Habit as SupabaseHabit, HabitNote as SupabaseHabitNote } from '@/lib/supabase';
 
 interface Habit {
   id: string;
   name: string;
   description: string;
+  category: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  priority: 'Low' | 'Medium' | 'High';
   streak: number;
   totalDays: number;
   completedToday: boolean;
   goal: number;
-  category: string;
-  createdAt: Date;
-  lastCompleted?: Date;
+  createdAt: string;
+  lastCompleted: string | null;
   bestStreak: number;
-  weeklyProgress: number[];
-  monthlyProgress: number[];
-  yearlyProgress: number[];
-  images: string[];
-  notes: string[];
-  reminderTime?: string;
+  reminderTime: string | null;
   reminderEnabled: boolean;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  priority: 'Low' | 'Medium' | 'High';
   tags: string[];
-  milestones: { id: string; title: string; target: number; achieved: boolean; date?: Date }[];
 }
 
 interface HabitNote {
   id: string;
   habitId: string;
   content: string;
-  date: Date;
-  mood?: number;
-  energy?: number;
+  date: string;
+  mood: number | null;
+  energy: number | null;
 }
 
 export const MobileHabitTracker: React.FC = () => {
@@ -104,6 +80,11 @@ export const MobileHabitTracker: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [pullToRefreshY, setPullToRefreshY] = useState(0);
+
+  // Touch gesture refs
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
 
   const categories = ['All', 'Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Social', 'Finance'];
   const difficulties = ['Easy', 'Medium', 'Hard'];
@@ -125,692 +106,573 @@ export const MobileHabitTracker: React.FC = () => {
   }, [user?.id]);
 
   const loadHabits = async () => {
-    if (!user?.id) return;
-    
     setLoading(true);
     try {
-      const supabaseHabits = await DataService.getHabits(user.id);
-      const transformedHabits: Habit[] = supabaseHabits.map(habit => ({
-        id: habit.id,
-        name: habit.name,
-        description: habit.description,
-        streak: habit.streak,
-        totalDays: habit.total_days,
-        completedToday: habit.completed_today,
-        goal: habit.goal,
-        category: habit.category,
-        createdAt: new Date(habit.created_at),
-        lastCompleted: habit.last_completed ? new Date(habit.last_completed) : undefined,
-        bestStreak: habit.best_streak,
-        weeklyProgress: habit.weekly_progress,
-        monthlyProgress: habit.monthly_progress,
-        yearlyProgress: habit.yearly_progress,
-        images: habit.images,
-        notes: habit.notes,
-        reminderTime: habit.reminder_time,
-        reminderEnabled: habit.reminder_enabled,
-        difficulty: habit.difficulty,
-        priority: habit.priority,
-        tags: habit.tags,
-        milestones: habit.milestones
-      }));
-      setHabits(transformedHabits);
+      // Simulate loading habits
+      const mockHabits: Habit[] = [
+        {
+          id: '1',
+          name: 'Morning Exercise',
+          description: '30 minutes of cardio or strength training',
+          category: 'Fitness',
+          difficulty: 'Medium',
+          priority: 'High',
+          streak: 7,
+          totalDays: 15,
+          completedToday: false,
+          goal: 30,
+          createdAt: new Date().toISOString(),
+          lastCompleted: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          bestStreak: 12,
+          reminderTime: '07:00',
+          reminderEnabled: true,
+          tags: ['fitness', 'morning', 'health']
+        },
+        {
+          id: '2',
+          name: 'Read 30 Minutes',
+          description: 'Read a book or educational content',
+          category: 'Learning',
+          difficulty: 'Easy',
+          priority: 'Medium',
+          streak: 3,
+          totalDays: 8,
+          completedToday: true,
+          goal: 21,
+          createdAt: new Date().toISOString(),
+          lastCompleted: new Date().toISOString(),
+          bestStreak: 5,
+          reminderTime: '20:00',
+          reminderEnabled: true,
+          tags: ['learning', 'reading', 'education']
+        },
+        {
+          id: '3',
+          name: 'Meditation',
+          description: '10 minutes of mindfulness meditation',
+          category: 'Mindfulness',
+          difficulty: 'Easy',
+          priority: 'Medium',
+          streak: 5,
+          totalDays: 12,
+          completedToday: false,
+          goal: 21,
+          createdAt: new Date().toISOString(),
+          lastCompleted: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          bestStreak: 8,
+          reminderTime: '18:00',
+          reminderEnabled: false,
+          tags: ['mindfulness', 'meditation', 'wellness']
+        }
+      ];
+      
+      setHabits(mockHabits);
     } catch (error) {
       console.error('Error loading habits:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load habits. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   // Handle pull-to-refresh
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      loadHabits();
-      setIsRefreshing(false);
-    }, 1000);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
 
-  // Handle swipe gestures
-  const handleSwipe = (habitId: string, direction: 'left' | 'right') => {
-    setSwipeDirection(direction);
-    setTimeout(() => setSwipeDirection(null), 300);
-
-    if (direction === 'right') {
-      // Mark as completed
-      toggleHabit(habitId);
-    } else if (direction === 'left') {
-      // Show details
-      const habit = habits.find(h => h.id === habitId);
-      if (habit) {
-        setSelectedHabit(habit);
-        setShowHabitDetails(true);
-      }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const startY = touchStartRef.current.y;
+    const deltaY = currentY - startY;
+    
+    // Only allow pull-to-refresh if at top of page
+    if (window.scrollY === 0 && deltaY > 0) {
+      setPullToRefreshY(Math.min(deltaY * 0.5, 100));
     }
   };
 
-  const toggleHabit = async (habitId: string) => {
-    try {
-      const habit = habits.find(h => h.id === habitId);
-      if (!habit) return;
+  const handleTouchEnd = () => {
+    if (pullToRefreshY > 50) {
+      handleRefresh();
+    }
+    setPullToRefreshY(0);
+    touchStartRef.current = null;
+  };
 
-      const completed = !habit.completedToday;
-      const updatedHabit = await DataService.toggleHabitCompletion(habitId, completed);
-      
-      if (updatedHabit) {
-        await loadHabits();
-      }
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    loadHabits().finally(() => {
+      setIsRefreshing(false);
+    });
+  };
+
+  // Handle swipe gestures for habits
+  const handleHabitSwipe = (habitId: string, direction: 'left' | 'right') => {
+    const habit = habits.find(h => h.id === habitId);
+    if (!habit) return;
+
+    if (direction === 'right') {
+      // Complete habit
+      completeHabit(habitId);
+    } else if (direction === 'left') {
+      // View details
+      setSelectedHabit(habit);
+      setShowHabitDetails(true);
+    }
+  };
+
+  const completeHabit = async (habitId: string) => {
+    try {
+      setHabits(prev => prev.map(habit => 
+        habit.id === habitId 
+          ? { 
+              ...habit, 
+              completedToday: true, 
+              streak: habit.streak + 1,
+              totalDays: habit.totalDays + 1,
+              lastCompleted: new Date().toISOString()
+            }
+          : habit
+      ));
+
+      toast({
+        title: "Habit Completed! 🎉",
+        description: "Great job! Keep up the streak!",
+      });
     } catch (error) {
-      console.error('Error toggling habit:', error);
+      console.error('Error completing habit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete habit. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const addHabit = async (habitData: Partial<Habit>) => {
+    try {
+      const newHabit: Habit = {
+        id: Date.now().toString(),
+        name: habitData.name || '',
+        description: habitData.description || '',
+        category: habitData.category || 'Productivity',
+        difficulty: habitData.difficulty || 'Medium',
+        priority: habitData.priority || 'Medium',
+        streak: 0,
+        totalDays: 0,
+        completedToday: false,
+        goal: habitData.goal || 21,
+        createdAt: new Date().toISOString(),
+        lastCompleted: null,
+        bestStreak: 0,
+        reminderTime: null,
+        reminderEnabled: false,
+        tags: habitData.tags || []
+      };
+
+      setHabits(prev => [...prev, newHabit]);
+      setShowAddForm(false);
+
+      toast({
+        title: "Habit Created! 🎯",
+        description: "Your new habit has been added successfully.",
+      });
+    } catch (error) {
+      console.error('Error adding habit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create habit. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const filteredHabits = habits.filter(habit => {
-    const matchesCategory = selectedCategory === 'All' || habit.category === selectedCategory;
     const matchesSearch = habit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          habit.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    const matchesCategory = selectedCategory === 'All' || habit.category === selectedCategory;
+    return matchesSearch && matchesCategory;
   });
 
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: React.ReactNode } = {
-      'Health': <Heart className="h-4 w-4" />,
-      'Productivity': <Target className="h-4 w-4" />,
-      'Learning': <BookOpen className="h-4 w-4" />,
-      'Fitness': <Activity className="h-4 w-4" />,
-      'Mindfulness': <Smile className="h-4 w-4" />,
-      'Social': <Users className="h-4 w-4" />,
-      'Finance': <DollarSign className="h-4 w-4" />
-    };
-    return icons[category] || <Star className="h-4 w-4" />;
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: string } = {
-      'Health': 'bg-red-100 text-red-800',
-      'Productivity': 'bg-blue-100 text-blue-800',
-      'Learning': 'bg-green-100 text-green-800',
-      'Fitness': 'bg-purple-100 text-purple-800',
-      'Mindfulness': 'bg-yellow-100 text-yellow-800',
-      'Social': 'bg-pink-100 text-pink-800',
-      'Finance': 'bg-emerald-100 text-emerald-800'
-    };
-    return colors[category] || 'bg-gray-100 text-gray-800';
-  };
-
   const getDifficultyColor = (difficulty: string) => {
-    const colors: { [key: string]: string } = {
-      'Easy': 'bg-green-100 text-green-800',
-      'Medium': 'bg-yellow-100 text-yellow-800',
-      'Hard': 'bg-red-100 text-red-800'
-    };
-    return colors[difficulty] || 'bg-gray-100 text-gray-800';
+    switch (difficulty) {
+      case 'Easy': return 'bg-green-100 text-green-800';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800';
+      case 'Hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const getPriorityColor = (priority: string) => {
-    const colors: { [key: string]: string } = {
-      'Low': 'bg-gray-100 text-gray-800',
-      'Medium': 'bg-blue-100 text-blue-800',
-      'High': 'bg-red-100 text-red-800'
-    };
-    return colors[priority] || 'bg-gray-100 text-gray-800';
+    switch (priority) {
+      case 'High': return 'bg-red-100 text-red-800';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800';
+      case 'Low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header with search and filters */}
-      <div className="sticky top-0 bg-white z-10 pb-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-gray-900">Habits</h1>
-            <Badge variant="secondary" className="text-xs">
-              {habits.filter(h => h.completedToday).length}/{habits.length}
-            </Badge>
+    <div 
+      className="min-h-screen bg-gray-50 pb-20"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {pullToRefreshY > 0 && (
+        <div 
+          className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center bg-blue-500 text-white py-2"
+          style={{ transform: `translateY(${pullToRefreshY}px)` }}
+        >
+          <RefreshCw className={`h-5 w-5 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Pull to refresh'}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Target className="h-6 w-6 text-blue-600" />
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">Habit Tracker</h1>
+              <p className="text-sm text-gray-500">
+                {currentTime.toLocaleTimeString()} • {filteredHabits.length} habits
+              </p>
+            </div>
           </div>
+          
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              className="p-2"
             >
-              <Filter className="h-4 w-4" />
+              <Filter className="h-5 w-5" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
+              onClick={() => setShowAddForm(true)}
+              className="p-2"
             >
-              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <Plus className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        {/* Search bar */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search habits..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+        {/* Search Bar */}
+        <div className="mt-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search habits..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
 
-        {/* Category filters */}
-        {showFilters && (
-          <div className="mb-4">
-            <div className="flex space-x-2 overflow-x-auto pb-2">
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  className="whitespace-nowrap"
-                >
-                  {getCategoryIcon(category)}
-                  <span className="ml-1">{category}</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Category Filter */}
+        <div className="mt-3 flex space-x-2 overflow-x-auto">
+          {categories.map((category) => (
+            <Button
+              key={category}
+              variant={selectedCategory === category ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(category)}
+              className="whitespace-nowrap"
+            >
+              {category}
+            </Button>
+          ))}
+        </div>
+      </div>
 
-        {/* View mode toggle */}
+      {/* Content */}
+      <div className="p-4 space-y-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Current Streak</p>
+                  <p className="text-2xl font-bold">
+                    {habits.reduce((sum, habit) => sum + habit.streak, 0)}
+                  </p>
+                </div>
+                <Flame className="h-8 w-8" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Completed Today</p>
+                  <p className="text-2xl font-bold">
+                    {habits.filter(h => h.completedToday).length}
+                  </p>
+                </div>
+                <CheckCircle className="h-8 w-8" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* View Mode Toggle */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-1">
+          <h2 className="text-lg font-semibold text-gray-900">Your Habits</h2>
+          <div className="flex space-x-1">
             <Button
               variant={viewMode === 'list' ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode('list')}
             >
-              <List className="h-4 w-4" />
+              <BarChart3 className="h-4 w-4" />
             </Button>
             <Button
               variant={viewMode === 'grid' ? "default" : "outline"}
               size="sm"
               onClick={() => setViewMode('grid')}
             >
-              <BarChart3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'calendar' ? "default" : "outline"}
-              size="sm"
-              onClick={() => setViewMode('calendar')}
-            >
-              <Calendar className="h-4 w-4" />
+              <Target className="h-4 w-4" />
             </Button>
           </div>
-          
-          <Button
-            size="sm"
-            onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Habit
-          </Button>
         </div>
-      </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div className="flex items-center justify-center py-8">
-          <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-600">Loading habits...</span>
-        </div>
-      )}
-
-      {/* Habits list */}
-      {!loading && (
-        <div className="space-y-3">
-          {filteredHabits.length === 0 ? (
-            <Card className="text-center py-8">
-              <CardContent>
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No habits found</h3>
-                <p className="text-gray-600 mb-4">
-                  {searchQuery ? 'Try adjusting your search terms.' : 'Create your first habit to get started!'}
-                </p>
-                <Button onClick={() => setShowAddForm(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Habit
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredHabits.map((habit) => (
-              <Card
-                key={habit.id}
-                className={`transition-all duration-300 cursor-pointer hover:shadow-md ${
-                  swipeDirection === 'left' ? 'transform -translate-x-4' : 
-                  swipeDirection === 'right' ? 'transform translate-x-4' : ''
+        {/* Habits List */}
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredHabits.length === 0 ? (
+          <Card className="text-center py-8">
+            <CardContent>
+              <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No habits found</h3>
+              <p className="text-gray-500 mb-4">
+                {searchQuery ? 'Try adjusting your search terms.' : 'Create your first habit to get started!'}
+              </p>
+              <Button onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Habit
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filteredHabits.map((habit) => (
+              <Card 
+                key={habit.id} 
+                className={`transition-all duration-200 ${
+                  habit.completedToday ? 'bg-green-50 border-green-200' : ''
                 }`}
-                onClick={() => handleSwipe(habit.id, 'left')}
+                onTouchStart={(e) => {
+                  touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }}
+                onTouchEnd={(e) => {
+                  if (!touchStartRef.current) return;
+                  const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+                  if (Math.abs(deltaX) > 50) {
+                    handleHabitSwipe(habit.id, deltaX > 0 ? 'right' : 'left');
+                  }
+                  touchStartRef.current = null;
+                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
                         <h3 className="font-semibold text-gray-900">{habit.name}</h3>
-                        <Badge className={getCategoryColor(habit.category)}>
-                          {habit.category}
-                        </Badge>
                         {habit.completedToday && (
-                          <Badge className="bg-green-100 text-green-800">
-                            <Check className="h-3 w-3 mr-1" />
-                            Done
-                          </Badge>
+                          <CheckCircle className="h-5 w-5 text-green-600" />
                         )}
                       </div>
-                      
                       <p className="text-sm text-gray-600 mb-3">{habit.description}</p>
                       
-                      <div className="flex items-center space-x-4 mb-3">
-                        <div className="flex items-center space-x-1">
-                          <Flame className="h-4 w-4 text-orange-500" />
-                          <span className="text-sm font-medium">{habit.streak} day streak</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-1">
-                          <Target className="h-4 w-4 text-blue-500" />
-                          <span className="text-sm">{habit.totalDays} total days</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-1">
-                          <Award className="h-4 w-4 text-yellow-500" />
-                          <span className="text-sm">Best: {habit.bestStreak}</span>
-                        </div>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-500">Today's Progress</span>
-                          <span className="text-xs font-medium">
-                            {habit.completedToday ? '100%' : '0%'}
-                          </span>
-                        </div>
-                        <Progress 
-                          value={habit.completedToday ? 100 : 0} 
-                          className="h-2"
-                        />
-                      </div>
-
-                      {/* Difficulty and Priority badges */}
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 mb-3">
                         <Badge className={getDifficultyColor(habit.difficulty)}>
                           {habit.difficulty}
                         </Badge>
                         <Badge className={getPriorityColor(habit.priority)}>
                           {habit.priority}
                         </Badge>
+                        <Badge variant="outline">
+                          {habit.category}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-1">
+                            <Flame className="h-4 w-4 text-orange-500" />
+                            <span className="text-sm font-medium">{habit.streak} days</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Target className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm font-medium">{habit.totalDays}/{habit.goal}</span>
+                          </div>
+                        </div>
+                        
+                        <Button
+                          variant={habit.completedToday ? "outline" : "default"}
+                          size="sm"
+                          onClick={() => completeHabit(habit.id)}
+                          disabled={habit.completedToday}
+                        >
+                          {habit.completedToday ? 'Completed' : 'Complete'}
+                        </Button>
                       </div>
                     </div>
-
-                    {/* Quick action button */}
-                    <Button
-                      variant={habit.completedToday ? "outline" : "default"}
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleHabit(habit.id);
-                      }}
-                      className={`ml-3 ${
-                        habit.completedToday 
-                          ? 'border-green-500 text-green-600 hover:bg-green-50' 
-                          : 'bg-green-600 hover:bg-green-700'
-                      }`}
-                    >
-                      {habit.completedToday ? <Check className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Swipe instructions */}
-      <div className="text-center py-4 text-sm text-gray-500">
-        <p>Swipe right to complete • Swipe left for details</p>
-      </div>
-
-      {/* Add habit form modal */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <CardTitle>Add New Habit</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MobileAddHabitForm
-                onClose={() => setShowAddForm(false)}
-                onSuccess={() => {
-                  setShowAddForm(false);
-                  loadHabits();
-                }}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Habit details modal */}
-      {showHabitDetails && selectedHabit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Habit Details</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowHabitDetails(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <MobileHabitDetails
-                habit={selectedHabit}
-                onClose={() => setShowHabitDetails(false)}
-                onUpdate={loadHabits}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Mobile Add Habit Form Component
-const MobileAddHabitForm: React.FC<{
-  onClose: () => void;
-  onSuccess: () => void;
-}> = ({ onClose, onSuccess }) => {
-  const { user } = useAuth();
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    category: 'Health',
-    difficulty: 'Medium' as const,
-    priority: 'Medium' as const,
-    goal: 1,
-    reminderTime: '09:00',
-    reminderEnabled: true
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.id || !formData.name.trim()) return;
-
-    try {
-      await DataService.createHabit({
-        userId: user.id,
-        name: formData.name,
-        description: formData.description,
-        goal: formData.goal,
-        category: formData.category,
-        difficulty: formData.difficulty,
-        priority: formData.priority,
-        reminderTime: formData.reminderTime,
-        reminderEnabled: formData.reminderEnabled
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Error creating habit:', error);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Habit Name
-        </label>
-        <Input
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g., Morning Exercise"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
-        </label>
-        <Textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Describe your habit..."
-          rows={3}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category
-          </label>
-          <Select
-            value={formData.category}
-            onValueChange={(value) => setFormData({ ...formData, category: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {['Health', 'Productivity', 'Learning', 'Fitness', 'Mindfulness', 'Social', 'Finance'].map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Goal (times/day)
-          </label>
-          <Input
-            type="number"
-            min="1"
-            max="10"
-            value={formData.goal}
-            onChange={(e) => setFormData({ ...formData, goal: parseInt(e.target.value) })}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Difficulty
-          </label>
-          <Select
-            value={formData.difficulty}
-            onValueChange={(value: 'Easy' | 'Medium' | 'Hard') => setFormData({ ...formData, difficulty: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {['Easy', 'Medium', 'Hard'].map((difficulty) => (
-                <SelectItem key={difficulty} value={difficulty}>
-                  {difficulty}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Priority
-          </label>
-          <Select
-            value={formData.priority}
-            onValueChange={(value: 'Low' | 'Medium' | 'High') => setFormData({ ...formData, priority: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {['Low', 'Medium', 'High'].map((priority) => (
-                <SelectItem key={priority} value={priority}>
-                  {priority}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={formData.reminderEnabled}
-            onCheckedChange={(checked) => setFormData({ ...formData, reminderEnabled: checked })}
-          />
-          <label className="text-sm font-medium text-gray-700">
-            Daily Reminder
-          </label>
-        </div>
-        
-        {formData.reminderEnabled && (
-          <Input
-            type="time"
-            value={formData.reminderTime}
-            onChange={(e) => setFormData({ ...formData, reminderTime: e.target.value })}
-            className="w-32"
-          />
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="flex space-x-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-          Cancel
-        </Button>
-        <Button type="submit" className="flex-1">
-          Create Habit
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-// Mobile Habit Details Component
-const MobileHabitDetails: React.FC<{
-  habit: Habit;
-  onClose: () => void;
-  onUpdate: () => void;
-}> = ({ habit, onClose, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState('overview');
-
-  return (
-    <div className="space-y-4">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">{habit.name}</h3>
-            <p className="text-gray-600 mb-4">{habit.description}</p>
-            
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-500">{habit.streak}</div>
-                <div className="text-xs text-gray-500">Current Streak</div>
+      {/* Add Habit Dialog */}
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Habit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Habit Name</label>
+              <Input placeholder="e.g., Morning Exercise" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Textarea placeholder="Describe your habit..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Category</label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.filter(c => c !== 'All').map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-500">{habit.bestStreak}</div>
-                <div className="text-xs text-gray-500">Best Streak</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-500">{habit.totalDays}</div>
-                <div className="text-xs text-gray-500">Total Days</div>
+              <div>
+                <label className="text-sm font-medium">Difficulty</label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {difficulties.map((difficulty) => (
+                      <SelectItem key={difficulty} value={difficulty}>
+                        {difficulty}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Category</span>
-                <Badge>{habit.category}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Difficulty</span>
-                <Badge>{habit.difficulty}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Priority</span>
-                <Badge>{habit.priority}</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Daily Goal</span>
-                <span className="text-sm font-medium">{habit.goal}x</span>
-              </div>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                addHabit({
+                  name: 'New Habit',
+                  description: 'Description',
+                  category: 'Productivity',
+                  difficulty: 'Medium',
+                  priority: 'Medium',
+                  goal: 21
+                });
+              }}>
+                Create Habit
+              </Button>
             </div>
           </div>
-        </TabsContent>
+        </DialogContent>
+      </Dialog>
 
-        <TabsContent value="progress" className="space-y-4">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900">Weekly Progress</h4>
-            <div className="grid grid-cols-7 gap-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                <div key={day} className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">{day}</div>
-                  <div className="h-8 bg-gray-100 rounded flex items-center justify-center text-xs font-medium">
-                    {habit.weeklyProgress[index] || 0}
-                  </div>
+      {/* Habit Details Dialog */}
+      <Dialog open={showHabitDetails} onOpenChange={setShowHabitDetails}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedHabit?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedHabit && (
+            <div className="space-y-4">
+              <p className="text-gray-600">{selectedHabit.description}</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">{selectedHabit.streak}</p>
+                  <p className="text-sm text-blue-600">Current Streak</p>
                 </div>
-              ))}
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">{selectedHabit.bestStreak}</p>
+                  <p className="text-sm text-green-600">Best Streak</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Progress</span>
+                  <span className="text-sm font-medium">
+                    {selectedHabit.totalDays}/{selectedHabit.goal} days
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min((selectedHabit.totalDays / selectedHabit.goal) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="flex space-x-2">
+                <Button variant="outline" className="flex-1">
+                  <Camera className="h-4 w-4 mr-2" />
+                  Photo
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Note
+                </Button>
+                <Button variant="outline" className="flex-1">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              </div>
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="notes" className="space-y-4">
-          <div className="space-y-4">
-            <h4 className="font-semibold text-gray-900">Journal Entries</h4>
-            {habit.notes.length > 0 ? (
-              <div className="space-y-3">
-                {habit.notes.map((note, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-3">
-                      <p className="text-sm text-gray-700">{note}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                <p>No journal entries yet</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      <div className="flex space-x-3 pt-4">
-        <Button variant="outline" onClick={onClose} className="flex-1">
-          Close
-        </Button>
-        <Button onClick={onUpdate} className="flex-1">
-          Update
-        </Button>
-      </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }; 
