@@ -4,8 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { X, Check, Key, UserPlus, LogIn } from 'lucide-react';
+import { X, Check, Key, UserPlus, LogIn, Shield } from 'lucide-react';
 import { UserPlan } from '@/hooks/useAuth';
+import { PiAuthButton } from './PiAuthButton';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -194,6 +195,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {isLoading ? (isSignUp ? 'Creating Account...' : 'Signing In...') : 
                 isSignUp ? `Sign Up with ${selectedPlan} Plan` : `Sign In with ${selectedPlan} Plan`}
             </Button>
+
+            {/* Pi Network Authentication */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <PiAuthButton
+              onAuthSuccess={(auth) => {
+                console.log('Pi auth success:', auth);
+                // You can handle Pi authentication success here
+                // For example, auto-login the user or redirect to dashboard
+              }}
+              onAuthError={(error) => {
+                console.error('Pi auth error:', error);
+              }}
+              className="w-full"
+              variant="outline"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Connect with Pi Network
+            </PiAuthButton>
 
             {/* Toggle between Sign In and Sign Up */}
             <div className="text-center">

@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, LogIn, CheckCircle, Zap, UserPlus } from 'lucide-react';
+import { ArrowRight, LogIn, CheckCircle, Zap, UserPlus, Shield } from 'lucide-react';
+import { PiAuthButton } from './PiAuthButton';
 
 interface QuickSigninProps {
   onSuccess?: () => void;
@@ -148,6 +149,41 @@ export const QuickSignin: React.FC<QuickSigninProps> = ({ onSuccess }) => {
                 </div>
               )}
             </Button>
+
+            {/* Pi Network Authentication */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <PiAuthButton
+              onAuthSuccess={(auth) => {
+                console.log('Pi auth success:', auth);
+                // Auto-login user after Pi authentication
+                const userName = auth.user?.username || 'Pi User';
+                toast({
+                  title: "Pi Network Connected! 🎉",
+                  description: `Welcome, ${userName}! Taking you to your dashboard...`,
+                  duration: 4000,
+                });
+                
+                setTimeout(() => {
+                  navigate('/dashboard');
+                }, 1000);
+              }}
+              onAuthError={(error) => {
+                console.error('Pi auth error:', error);
+              }}
+              className="w-full"
+              variant="outline"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Connect with Pi Network
+            </PiAuthButton>
           </form>
 
           {/* Forgot Password & Sign Up Links */}

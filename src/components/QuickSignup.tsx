@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles, CheckCircle, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles, CheckCircle, Zap, Shield } from 'lucide-react';
+import { PiAuthButton } from './PiAuthButton';
 
 interface QuickSignupProps {
   onSuccess?: () => void;
@@ -161,6 +162,47 @@ export const QuickSignup: React.FC<QuickSignupProps> = ({ onSuccess }) => {
                 </div>
               )}
             </Button>
+
+            {/* Pi Network Authentication */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <PiAuthButton
+              onAuthSuccess={(auth) => {
+                console.log('Pi auth success:', auth);
+                // Auto-create account after Pi authentication
+                const userName = auth.user?.username || 'Pi User';
+                toast({
+                  title: "Pi Network Connected! 🎉",
+                  description: `Welcome, ${userName}! Creating your account...`,
+                  duration: 4000,
+                });
+                
+                // Auto-register user with Pi credentials
+                setTimeout(async () => {
+                  try {
+                    await register(`${userName}@pi.network`, 'pi-auth-password', userName, 'Free');
+                    navigate('/dashboard');
+                  } catch (error) {
+                    console.error('Auto-registration error:', error);
+                  }
+                }, 1000);
+              }}
+              onAuthError={(error) => {
+                console.error('Pi auth error:', error);
+              }}
+              className="w-full"
+              variant="outline"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Connect with Pi Network
+            </PiAuthButton>
           </form>
 
           {/* Login Link */}

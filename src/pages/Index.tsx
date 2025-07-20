@@ -689,6 +689,15 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   </Button>
                   <Button 
                     size="sm" 
+                    variant="outline"
+                    className="text-sm border-purple-300 hover:border-purple-400 hover:bg-purple-50 transition-all duration-300 hover:scale-105" 
+                    onClick={() => navigate('/pi-login')}
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Pi Network
+                  </Button>
+                  <Button 
+                    size="sm" 
                     className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-sm font-medium shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105" 
                     onClick={() => setShowLoginModal(true)}
                   >
