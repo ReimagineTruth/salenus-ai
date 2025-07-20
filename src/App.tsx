@@ -23,6 +23,7 @@ import { Help } from './pages/Help';
 import SplashScreen from './components/SplashScreen';
 import { SEO } from './components/SEO';
 import { toast } from '@/hooks/use-toast';
+import { PiIntegrationDashboard } from './components/PiIntegrationDashboard';
 
 const queryClient = new QueryClient();
 
@@ -496,6 +497,7 @@ const App = () => {
             {/* Other routes */}
             <Route path="/logout" element={<LogoutPage />} />
             <Route path="/help" element={<Help />} />
+            <Route path="/pi-network" element={<PiIntegrationDashboard />} />
             <Route path="/salenusaiofficial" element={
               <Index 
                 user={user} 
