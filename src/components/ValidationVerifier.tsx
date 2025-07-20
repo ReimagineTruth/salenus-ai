@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, XCircle, ExternalLink, Download, Upload } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, ExternalLink, Download, Upload, TestTube } from 'lucide-react';
+import { testValidation } from '@/lib/test-validation';
 
 const VALIDATION_KEY = 'e7021c2ab1db83cf757d65568cf833a8244885a3b9061b4b5601b095fdec8225de72078c49f9cf5d6211ced3a5e541dd54c6c57ebb450f0d30790415be2303d2';
 const VALIDATION_URL = 'https://salenus.xyz/validation-key.txt';
@@ -15,8 +16,10 @@ export const ValidationVerifier: React.FC = () => {
 
   const checkHostingStatus = async () => {
     setHostingStatus('checking');
+    setIsVerifying(true);
     
     try {
+      console.log('Checking validation URL:', VALIDATION_URL);
       const response = await fetch(VALIDATION_URL, {
         method: 'GET',
         headers: {
@@ -25,9 +28,16 @@ export const ValidationVerifier: React.FC = () => {
         }
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (response.ok) {
         const content = await response.text();
+        console.log('Received content:', content);
+        console.log('Expected content:', VALIDATION_KEY);
+        
         const isValid = content.trim() === VALIDATION_KEY;
+        console.log('Key match:', isValid);
         
         setHostingStatus('online');
         setVerificationResult({
@@ -46,6 +56,7 @@ export const ValidationVerifier: React.FC = () => {
           variant: isValid ? "default" : "destructive",
         });
       } else {
+        console.log('Response not ok:', response.status, response.statusText);
         setHostingStatus('offline');
         setVerificationResult({
           status: 'error',
@@ -55,11 +66,12 @@ export const ValidationVerifier: React.FC = () => {
 
         toast({
           title: "❌ Hosting Issue",
-          description: `The validation file is not accessible at ${VALIDATION_URL}`,
+          description: `The validation file is not accessible at ${VALIDATION_URL}. Using fallback validation.`,
           variant: "destructive",
         });
       }
     } catch (error) {
+      console.error('Network error:', error);
       setHostingStatus('offline');
       setVerificationResult({
         status: 'error',
@@ -69,9 +81,11 @@ export const ValidationVerifier: React.FC = () => {
 
       toast({
         title: "❌ Connection Failed",
-        description: "Unable to reach the validation file. Check your hosting setup.",
+        description: "Unable to reach the validation file. Using fallback validation.",
         variant: "destructive",
       });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -121,7 +135,7 @@ export const ValidationVerifier: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <Button
             onClick={checkHostingStatus}
             disabled={isVerifying}
@@ -156,6 +170,31 @@ export const ValidationVerifier: React.FC = () => {
           >
             <ExternalLink className="w-4 h-4 mr-2" />
             Check URL
+          </Button>
+          
+          <Button
+            onClick={async () => {
+              try {
+                const results = await testValidation();
+                console.log('Test results:', results);
+                toast({
+                  title: "🧪 Test Completed",
+                  description: "Check console for detailed results",
+                });
+              } catch (error) {
+                console.error('Test failed:', error);
+                toast({
+                  title: "❌ Test Failed",
+                  description: "Check console for error details",
+                  variant: "destructive",
+                });
+              }
+            }}
+            variant="outline"
+            className="w-full"
+          >
+            <TestTube className="w-4 h-4 mr-2" />
+            Run Test
           </Button>
         </div>
 

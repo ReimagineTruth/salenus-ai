@@ -7,6 +7,7 @@ export interface ValidationResult {
 export class ValidationService {
   private static instance: ValidationService;
   private validationUrl = 'https://salenus.xyz/validation-key.txt';
+  private fallbackKey = 'e7021c2ab1db83cf757d65568cf833a8244885a3b9061b4b5601b095fdec8225de72078c49f9cf5d6211ced3a5e541dd54c6c57ebb450f0d30790415be2303d2';
   private cache: Map<string, ValidationResult> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
@@ -28,7 +29,7 @@ export class ValidationService {
     }
 
     try {
-      // Fetch validation keys from external source
+      // First try to fetch from external source
       const response = await fetch(this.validationUrl, {
         method: 'GET',
         headers: {
@@ -37,32 +38,45 @@ export class ValidationService {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (response.ok) {
+        const validationData = await response.text();
+        const validKeys = this.parseValidationData(validationData);
+        
+        const isValid = validKeys.includes(key);
+        const result: ValidationResult = {
+          isValid,
+          message: isValid ? 'Key is valid (from hosted file)' : 'Key is not valid',
+          timestamp: new Date().toISOString()
+        };
+
+        // Cache the result
+        this.cache.set(key, result);
+        
+        return result;
+      } else {
+        // Fallback to local validation if external file is not accessible
+        console.log('External validation file not accessible, using fallback validation');
+        return this.validateWithFallback(key);
       }
-
-      const validationData = await response.text();
-      const validKeys = this.parseValidationData(validationData);
-      
-      const isValid = validKeys.includes(key);
-      const result: ValidationResult = {
-        isValid,
-        message: isValid ? 'Key is valid' : 'Key is not valid',
-        timestamp: new Date().toISOString()
-      };
-
-      // Cache the result
-      this.cache.set(key, result);
-      
-      return result;
     } catch (error) {
       console.error('Validation error:', error);
-      return {
-        isValid: false,
-        message: `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date().toISOString()
-      };
+      console.log('Using fallback validation due to network error');
+      return this.validateWithFallback(key);
     }
+  }
+
+  private validateWithFallback(key: string): ValidationResult {
+    const isValid = key === this.fallbackKey;
+    const result: ValidationResult = {
+      isValid,
+      message: isValid ? 'Key is valid (fallback validation)' : 'Key is not valid',
+      timestamp: new Date().toISOString()
+    };
+
+    // Cache the result
+    this.cache.set(key, result);
+    
+    return result;
   }
 
   private parseValidationData(data: string): string[] {

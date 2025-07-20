@@ -26,7 +26,10 @@ export const KeyValidation: React.FC = () => {
     setIsValidating(true);
     
     try {
+      console.log('Validating key:', key.trim());
       const result = await validationService.validateKey(key.trim());
+      console.log('Validation result:', result);
+      
       setValidationResult(result);
       
       // Add to history
