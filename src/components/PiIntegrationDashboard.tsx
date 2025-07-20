@@ -9,6 +9,7 @@ import { PiAdNetwork } from './PiAdNetwork';
 import { PiSDKTest } from './PiSDKTest';
 import { PiAds } from './PiAds';
 import { KeyValidation } from './KeyValidation';
+import { ValidationVerifier } from './ValidationVerifier';
 import { PiNetworkService, PiAuth as PiAuthType } from '@/lib/pi-network';
 import { toast } from '@/hooks/use-toast';
 import { 
@@ -125,10 +126,14 @@ export const PiIntegrationDashboard: React.FC<PiIntegrationDashboardProps> = ({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="validation" className="flex items-center space-x-2">
             <Key className="w-4 h-4" />
             <span>Validation</span>
+          </TabsTrigger>
+          <TabsTrigger value="verifier" className="flex items-center space-x-2">
+            <CheckCircle className="w-4 h-4" />
+            <span>Verifier</span>
           </TabsTrigger>
           <TabsTrigger value="overview" className="flex items-center space-x-2">
             <User className="w-4 h-4" />
@@ -443,6 +448,12 @@ export const PiIntegrationDashboard: React.FC<PiIntegrationDashboardProps> = ({
         <TabsContent value="validation" className="space-y-6">
           <div className="flex justify-center">
             <KeyValidation />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="verifier" className="space-y-6">
+          <div className="flex justify-center">
+            <ValidationVerifier />
           </div>
         </TabsContent>
 
