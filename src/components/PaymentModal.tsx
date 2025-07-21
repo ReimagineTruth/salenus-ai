@@ -116,10 +116,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           setShowPiPayment(false);
           setPiPaymentStep('pending');
           await onPay();
-          // Ensure dashboard redirect happens after payment
-          setTimeout(() => {
-            window.location.href = '/dashboard';
-          }, 500);
+          // onPay function will handle the dashboard redirect
         }, 1500);
       }, 2000);
     }, 1000);
