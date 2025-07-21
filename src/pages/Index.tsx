@@ -75,6 +75,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   const [isUpgrade, setIsUpgrade] = useState(false);
   const [showPlanSelection, setShowPlanSelection] = useState(false);
   const [showPiAd, setShowPiAd] = useState(false);
+  const [showPiAdModal, setShowPiAdModal] = useState(false);
   const [showDemoDashboard, setShowDemoDashboard] = useState(false);
   const [selectedDemoPlan, setSelectedDemoPlan] = useState<'Basic' | 'Pro' | 'Premium'>('Basic');
   const [showCookieConsent, setShowCookieConsent] = useState(false);
@@ -460,11 +461,11 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
         duration: 4000,
       });
       
-      // Redirect to dashboard after payment
+      // Immediately redirect to dashboard after payment
       setTimeout(() => {
         console.log('Redirecting to dashboard after payment...');
         window.location.href = '/dashboard';
-      }, 1000);
+      }, 500);
     }
     setPendingPlan(null);
     setIsUpgrade(false);
@@ -501,7 +502,12 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   };
 
   const handleOpenHabitTracker = () => {
-    setShowPiAd(true);
+    // For free users, show Pi ad modal
+    if (!user || user?.plan === 'Free') {
+      setShowPiAdModal(true);
+    } else {
+      setShowPiAd(true);
+    }
   };
 
   const handleAdComplete = () => {
@@ -2067,6 +2073,21 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
           </Button>
         </div>
       )}
+
+      {/* Pi Ad Modal for Free Users */}
+      <PiAdModal
+        isOpen={showPiAdModal}
+        onClose={() => setShowPiAdModal(false)}
+        onAdComplete={() => {
+          console.log('Pi ad completed successfully');
+          toast({
+            title: "Ad Completed! 🎉",
+            description: "You can now access the habit tracking app.",
+            duration: 3000,
+          });
+        }}
+        userPlan={user?.plan}
+      />
 
       {/* Cookie Consent Banner */}
       <CookieConsent

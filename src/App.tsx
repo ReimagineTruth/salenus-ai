@@ -25,6 +25,7 @@ import { SEO } from './components/SEO';
 import { toast } from '@/hooks/use-toast';
 import { PiIntegrationDashboard } from './components/PiIntegrationDashboard';
 import { PiLoginPage } from './pages/PiLoginPage';
+import { SimplifiedAuthFlow } from './components/SimplifiedAuthFlow';
 
 const queryClient = new QueryClient();
 
@@ -159,14 +160,14 @@ const App = () => {
     const isUserLoggedIn = user || authUser;
     
     if (!isUserLoggedIn) {
-      // User is not logged in, redirect to quick signup (no plan selection)
-      console.log('User not logged in, redirecting to quick signup');
+      // User is not logged in, redirect to simplified auth flow
+      console.log('User not logged in, redirecting to simplified auth');
       toast({
         title: "Welcome to Salenus A.I! 🎉",
-        description: "Let's get you started with a free account. No payment required!",
+        description: "Let's get you started with Pi Network authentication!",
         duration: 4000,
       });
-      window.location.href = '/signup';
+      window.location.href = '/auth';
     } else {
       // User is already logged in, show upgrade modal
       console.log('User logged in, showing upgrade options');
@@ -209,18 +210,11 @@ const App = () => {
         duration: 4000,
       });
       
-      // Show redirect message
-      toast({
-        title: "Redirecting to Dashboard...",
-        description: "Taking you to your personalized dashboard where you can explore all your new features!",
-        duration: 3000,
-      });
-      
-      // Redirect to dashboard after a short delay
+      // Immediately redirect to dashboard
       setTimeout(() => {
         console.log('Redirecting to dashboard after payment completion...');
         window.location.href = '/dashboard';
-      }, 1500);
+      }, 1000);
       
     } catch (error) {
       console.error('Payment error:', error);
@@ -332,25 +326,31 @@ const App = () => {
               />
             } />
             
-            {/* Quick signin page - new simplified workflow */}
-            <Route path="/login" element={
+            {/* Simplified authentication flow */}
+            <Route path="/auth" element={
               user ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <QuickSignin onSuccess={() => {
-                  console.log('Quick signin successful');
+                <SimplifiedAuthFlow onSuccess={() => {
+                  console.log('Simplified auth successful');
                 }} />
               )
             } />
             
-            {/* Quick signup page - new simplified workflow */}
+            {/* Legacy routes for backward compatibility */}
+            <Route path="/login" element={
+              user ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <Navigate to="/auth" replace />
+              )
+            } />
+            
             <Route path="/signup" element={
               user ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <QuickSignup onSuccess={() => {
-                  console.log('Quick signup successful');
-                }} />
+                <Navigate to="/auth" replace />
               )
             } />
             

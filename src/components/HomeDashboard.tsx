@@ -262,11 +262,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
         duration: 4000,
       });
       
-      // Redirect to dashboard after successful upgrade
+      // Immediately redirect to dashboard after successful upgrade
       setTimeout(() => {
         console.log('Redirecting to dashboard after plan upgrade...');
         window.location.href = '/dashboard';
-      }, 1000);
+      }, 500);
     } catch (error) {
       toast({
         title: "Upgrade Failed",

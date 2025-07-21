@@ -98,6 +98,7 @@ import { PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { PiAdModal } from './PiAdModal';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
@@ -250,6 +251,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
   const [showResetConfirmation, setShowResetConfirmation] = React.useState(false);
   const [resetConfirmationText, setResetConfirmationText] = React.useState('');
   const [showDataManagement, setShowDataManagement] = React.useState(false);
+  const [showPiAdModal, setShowPiAdModal] = React.useState(false);
 
   React.useEffect(() => {
     localStorage.setItem('dashboardTab', activeTab);
@@ -323,11 +325,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       // Close payment modal
       setPaymentOpen(false);
       
-      // Refresh the page to ensure all new features are loaded
+      // Redirect to dashboard to ensure all new features are loaded
       setTimeout(() => {
-        console.log('Refreshing dashboard after plan upgrade...');
-        window.location.reload();
-      }, 1000);
+        console.log('Redirecting to dashboard after plan upgrade...');
+        window.location.href = '/dashboard';
+      }, 500);
       
     } catch (error) {
       console.error('Mock payment error:', error);
@@ -836,6 +838,13 @@ This action cannot be undone. Are you sure you want to continue?`;
 
   // For upgrades, call onUpgrade from parent (Index.tsx)
   const handleLockedFeatureClick = (feature: string, minPlan: UserPlan) => {
+    // For free users trying to access habit tracker, show Pi ad modal
+    if (feature === 'Habit Tracker' && user?.plan === 'Free') {
+      setShowPiAdModal(true);
+      setDrawerOpen(false);
+      return;
+    }
+    
     if (onUpgrade) {
       onUpgrade(minPlan);
       setDrawerOpen(false);
@@ -1105,11 +1114,26 @@ This action cannot be undone. Are you sure you want to continue?`;
                 View All Features
               </Button>
             </div>
-          </div>
-        </div>
+                  </div>
       </div>
-    );
-  };
+      
+      {/* Pi Ad Modal for Free Users */}
+      <PiAdModal
+        isOpen={showPiAdModal}
+        onClose={() => setShowPiAdModal(false)}
+        onAdComplete={() => {
+          console.log('Pi ad completed successfully');
+          toast({
+            title: "Ad Completed! 🎉",
+            description: "You can now access the habit tracking app.",
+            duration: 3000,
+          });
+        }}
+        userPlan={user?.plan}
+      />
+    </div>
+  );
+};
 
   // Safety check for user data
   if (!user) {

@@ -125,11 +125,11 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
         duration: 4000,
       });
 
-      // Close modal and redirect to dashboard
+      // Close modal and immediately redirect to dashboard
       onClose();
       setTimeout(() => {
         navigate('/dashboard');
-      }, 1000);
+      }, 500);
 
     } catch (error) {
       console.error('Upgrade error:', error);
