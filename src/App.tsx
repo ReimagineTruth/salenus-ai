@@ -186,6 +186,7 @@ const App = () => {
     console.log('Payment processing started...');
     console.log('Selected plan:', selectedPlan);
     console.log('Pricing toggle:', pricingToggle);
+    console.log('Current user:', user);
     
     // Show processing toast
     toast({
@@ -199,6 +200,7 @@ const App = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Update user plan
+      console.log('Updating user plan to:', selectedPlan);
       await upgradePlan(selectedPlan as any);
       
       // Show success message
@@ -210,11 +212,21 @@ const App = () => {
         duration: 4000,
       });
       
-      // Immediately redirect to dashboard
+      // Force redirect to dashboard with longer delay
       setTimeout(() => {
         console.log('Redirecting to dashboard after payment completion...');
+        console.log('Current location before redirect:', window.location.href);
         window.location.href = '/dashboard';
-      }, 1000);
+        console.log('Redirect command executed');
+        
+        // Fallback redirect if the first one doesn't work
+        setTimeout(() => {
+          if (window.location.pathname !== '/dashboard') {
+            console.log('Fallback redirect to dashboard...');
+            window.location.replace('/dashboard');
+          }
+        }, 1000);
+      }, 2000);
       
     } catch (error) {
       console.error('Payment error:', error);
@@ -411,6 +423,15 @@ const App = () => {
                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
                       >
                         Mock Payment - {getPlanPrice(selectedPlan, pricingToggle)}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          console.log('Direct dashboard navigation test...');
+                          window.location.href = '/dashboard';
+                        }}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
+                      >
+                        Test: Go to Dashboard
                       </button>
                       <button 
                         onClick={() => window.location.href = '/'}
