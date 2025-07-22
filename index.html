@@ -2,7 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Mobile-specific meta tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Salenus AI" />
+    <meta name="msapplication-TileColor" content="#4f46e5" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Prevent caching issues on mobile -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     
     <!-- Primary Meta Tags -->
     <title>Salenus AI — Pi-Powered Verified AI Coaching</title>
@@ -77,11 +90,29 @@
     }
     </script>
 
-    <!-- Pi Network SDK -->
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <!-- Pi Network SDK with error handling -->
     <script>
-      // Initialize Pi SDK
-      Pi.init({ version: "2.0", sandbox: true });
+      // Prevent Pi SDK loading errors from breaking the app
+      window.addEventListener('error', function(e) {
+        if (e.message.includes('Pi') || e.message.includes('pi-sdk')) {
+          console.warn('Pi SDK error caught:', e.message);
+          e.preventDefault();
+        }
+      });
+    </script>
+    <script src="https://sdk.minepi.com/pi-sdk.js" onerror="console.warn('Pi SDK failed to load')"></script>
+    <script>
+      // Initialize Pi SDK with error handling
+      try {
+        if (typeof Pi !== 'undefined') {
+          Pi.init({ version: "2.0", sandbox: true });
+          console.log('Pi SDK initialized successfully');
+        } else {
+          console.warn('Pi SDK not available, continuing without Pi features');
+        }
+      } catch (error) {
+        console.warn('Pi SDK initialization failed:', error);
+      }
     </script>
   </head>
 

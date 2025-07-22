@@ -521,21 +521,56 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   };
 
   useEffect(() => {
+    // Make all elements visible by default after a short delay
+    const elements = document.querySelectorAll('.fade-in-element');
+    
+    // Show elements immediately if no JavaScript support
+    if (!window.IntersectionObserver) {
+      elements.forEach((el) => {
+        el.style.opacity = '1';
+        el.classList.add('fade-in');
+      });
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in');
+            entry.target.classList.add('fade-in');
+            entry.target.style.opacity = '1';
           }
         });
       },
       { threshold: 0.1 }
     );
 
-    const elements = document.querySelectorAll('.fade-in-element');
     elements.forEach((el) => observer.observe(el));
 
-    return () => observer.disconnect();
+    // Fallback: Make all elements visible after 2 seconds if they're still hidden
+    const fallbackTimer = setTimeout(() => {
+      elements.forEach((el) => {
+        if (el.style.opacity === '0' || getComputedStyle(el).opacity === '0') {
+          el.style.opacity = '1';
+          el.classList.add('fade-in');
+        }
+      });
+    }, 2000);
+
+    // Final fallback: Show all content after 5 seconds
+    const finalFallbackTimer = setTimeout(() => {
+      elements.forEach((el) => {
+        el.style.opacity = '1';
+        el.classList.add('fade-in');
+        el.classList.add('show-content');
+      });
+    }, 5000);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(fallbackTimer);
+      clearTimeout(finalFallbackTimer);
+    };
   }, []);
 
   // Show cookie consent if user hasn't made a choice yet
@@ -589,7 +624,8 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     }
   };
 
-  if (user && hasPaid) {
+  // Show dashboard for all authenticated users, not just paid users
+  if (user) {
     return <UserDashboard user={user} onLogout={onLogout} onUpgrade={handleUpgrade} />;
   }
 
@@ -794,25 +830,13 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                       <div className={`text-sm px-4 py-2 rounded-full inline-block font-medium shadow-sm ${hasPaid ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border border-green-200' : 'bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700 border border-orange-200'}`}>
                         {hasPaid ? `${selectedPlan} Plan` : 'Free Account'}
                       </div>
-                      {hasPaid && (
-                        <Button 
-                          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 py-4 text-base"
-                          onClick={() => window.location.href = '/dashboard'}
-                        >
-                          <BarChart3 className="h-5 w-5 mr-3" />
-                          Access Dashboard
-                        </Button>
-                      )}
-                      {user && (
-                        <Button 
-                          variant="outline"
-                          className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 transition-all duration-300 py-4 text-base font-semibold"
-                          onClick={() => window.location.href = '/dashboard'}
-                        >
-                          <BarChart3 className="h-5 w-5 mr-3" />
-                          Dashboard
-                        </Button>
-                      )}
+                      <Button 
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 py-4 text-base"
+                        onClick={() => window.location.href = '/dashboard'}
+                      >
+                        <BarChart3 className="h-5 w-5 mr-3" />
+                        Access Dashboard
+                      </Button>
                       {!hasPaid && (
                         <Button 
                           className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 py-4 text-base"

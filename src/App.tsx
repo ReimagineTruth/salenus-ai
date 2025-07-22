@@ -15,6 +15,7 @@ import { QuickSignin } from "./components/QuickSignin";
 import { ForgotPassword } from "./components/ForgotPassword";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { supabase } from './lib/supabase';
+import { mobileUtils } from './lib/mobile-utils';
 
 import FooterPageLayout from './components/FooterPageLayout';
 import LoginPage from './pages/LoginPage';
@@ -26,8 +27,24 @@ import { toast } from '@/hooks/use-toast';
 import { PiIntegrationDashboard } from './components/PiIntegrationDashboard';
 import { PiLoginPage } from './pages/PiLoginPage';
 import { SimplifiedAuthFlow } from './components/SimplifiedAuthFlow';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 
 const queryClient = new QueryClient();
+
+// Mobile Loading Component
+const MobileLoadingScreen = () => (
+  <div className="loading-screen">
+    <div className="text-center text-white">
+      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+      <h1 className="text-2xl font-bold mb-2">Salenus AI</h1>
+      <p className="text-lg opacity-90">Loading your AI coach...</p>
+      <div className="mt-4 text-sm opacity-75">
+        <div className="loading-dots">Initializing</div>
+      </div>
+    </div>
+  </div>
+);
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component<
@@ -50,8 +67,8 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md mx-4">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Application Error</h1>
             <p className="text-gray-600 mb-4">Something went wrong. Please try refreshing the page.</p>
             <button 
@@ -73,9 +90,18 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('Free');
   const [pricingToggle, setPricingToggle] = useState('monthly');
+  const [isMobile, setIsMobile] = useState(false);
   
   // Use the Supabase auth hook - ALWAYS call this
   const { user, authUser, isLoading: authLoading, login, register, logout, upgradePlan } = useAuth();
+
+  // Check if device is mobile using mobile utils
+  useEffect(() => {
+    const mobileInfo = mobileUtils.getMobileInfo();
+    setIsMobile(mobileInfo.isMobile);
+    console.log('Device type:', mobileInfo.isMobile ? 'Mobile' : 'Desktop');
+    console.log('Pi Browser:', mobileInfo.isPiBrowser);
+  }, []);
 
   // Initialize app and check for existing user
   useEffect(() => {
@@ -91,13 +117,23 @@ const App = () => {
       }
       
       setIsLoading(false);
+      
+      // Hide mobile loading screen when app is ready
+      if (mobileUtils.isMobileDevice()) {
+        mobileUtils.hideMobileLoadingScreen();
+      }
     };
 
     // Add a timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       console.log('Initialization timeout reached');
       setIsLoading(false);
-    }, 5000); // Increased timeout for real auth
+      
+      // Hide mobile loading screen on timeout
+      if (mobileUtils.isMobileDevice()) {
+        mobileUtils.hideMobileLoadingScreen();
+      }
+    }, mobileUtils.isMobileDevice() ? 10000 : 8000); // Longer timeout for mobile devices
 
     // Initialize when auth state is determined
     if (authLoading) {
@@ -112,6 +148,55 @@ const App = () => {
       clearTimeout(timeoutId);
     };
   }, [authUser, user, authLoading]);
+
+  // Show mobile loading screen for mobile devices
+  if (isMobile && (isLoading || authLoading)) {
+    return <MobileLoadingScreen />;
+  }
+
+  // Show splash screen for desktop during loading
+  if (isLoading || authLoading) {
+    return (
+      <ErrorBoundary>
+        <SEO title="Salenus AI — Loading..." description="Loading your Pi-powered AI coaching experience..." />
+        <SplashScreen />
+      </ErrorBoundary>
+    );
+  }
+
+  // Debug logging
+  console.log('App - Current state:', {
+    user,
+    isLoading,
+    authLoading,
+    selectedPlan,
+    pricingToggle,
+    isMobile
+  });
+
+  // Additional debugging for authentication
+  console.log('App - Authentication details:', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    userPlan: user?.plan,
+    userHasPaid: user?.hasPaid,
+    isLoading,
+    authLoading
+  });
+
+  // Add a simple loading state to prevent white screen
+  if (isLoading || authLoading) {
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading Salenus AI...</p>
+          </div>
+        </div>
+      </ErrorBoundary>
+    );
+  }
 
   // Handle workflow progression
   const handleLogin = async (userData: any) => {
@@ -274,49 +359,6 @@ const App = () => {
     };
     return pricing[plan]?.[billing] || '5 Pi';
   };
-
-  // Show splash screen during initial load
-  if (isLoading || authLoading) {
-    return (
-      <ErrorBoundary>
-        <SEO title="Salenus AI — Loading..." description="Loading your Pi-powered AI coaching experience..." />
-        <SplashScreen />
-      </ErrorBoundary>
-    );
-  }
-
-  // Debug logging
-  console.log('App - Current state:', {
-    user,
-    isLoading,
-    authLoading,
-    selectedPlan,
-    pricingToggle
-  });
-
-  // Additional debugging for authentication
-  console.log('App - Authentication details:', {
-    hasUser: !!user,
-    userEmail: user?.email,
-    userPlan: user?.plan,
-    userHasPaid: user?.hasPaid,
-    isLoading,
-    authLoading
-  });
-
-  // Add a simple loading state to prevent white screen
-  if (isLoading || authLoading) {
-    return (
-      <ErrorBoundary>
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading Salenus AI...</p>
-          </div>
-        </div>
-      </ErrorBoundary>
-    );
-  }
 
   return (
     <ErrorBoundary>
@@ -537,6 +579,8 @@ const App = () => {
             <Route path="/sync" element={<Navigate to="/dashboard/sync" replace />} />
             <Route path="/mobile" element={<Navigate to="/dashboard/mobile" replace />} />
             <Route path="/notifications" element={<Navigate to="/dashboard/notifications" replace />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             
             {/* Catch-all route for unknown paths */}
             <Route path="*" element={
