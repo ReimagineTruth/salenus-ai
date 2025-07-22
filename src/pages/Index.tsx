@@ -294,7 +294,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   const yearlyPlans = [
     {
       name: "Basic",
-      price: "50 Pi",
+      price: "100 Pi",
       features: [
         "Track up to 5 daily habits",
         "Manage up to 20 tasks",
@@ -318,7 +318,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     },
     {
       name: "Pro",
-      price: "100 Pi",
+      price: "150 Pi",
       features: [
         "Everything in Basic",
         "Mood-based suggestions",
@@ -343,7 +343,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     },
     {
       name: "Premium",
-      price: "150 Pi",
+      price: "200 Pi",
       features: [
         "Everything in Pro",
         "AI Personal Coach",
@@ -1165,11 +1165,11 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
               <div className="bg-white rounded-lg p-6 shadow-md text-center">
                 <div className="text-2xl font-bold text-blue-600 mb-2">Basic</div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">10 Pi/month</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">100 Pi/year</div>
                 <div className="text-gray-600 mb-4">Perfect for getting started</div>
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700"
-                  onClick={() => onChoosePlan && onChoosePlan('Basic', 'monthly')}
+                  onClick={() => onChoosePlan && onChoosePlan('Basic', 'yearly')}
                 >
                   Start Basic
                 </Button>
@@ -1179,22 +1179,22 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   <Badge className="bg-indigo-600 text-white">Most Popular</Badge>
                 </div>
                 <div className="text-2xl font-bold text-indigo-600 mb-2">Pro</div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">15 Pi/month</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">150 Pi/year</div>
                 <div className="text-gray-600 mb-4">Advanced features & AI coaching</div>
                 <Button 
                   className="w-full bg-indigo-600 hover:bg-indigo-700"
-                  onClick={() => onChoosePlan && onChoosePlan('Pro', 'monthly')}
+                  onClick={() => onChoosePlan && onChoosePlan('Pro', 'yearly')}
                 >
                   Start Pro
                 </Button>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-md text-center">
                 <div className="text-2xl font-bold text-purple-600 mb-2">Premium</div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">20 Pi/month</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">200 Pi/year</div>
                 <div className="text-gray-600 mb-4">Ultimate AI coaching experience</div>
                 <Button 
                   className="w-full bg-purple-600 hover:bg-purple-700"
-                  onClick={() => onChoosePlan && onChoosePlan('Premium', 'monthly')}
+                  onClick={() => onChoosePlan && onChoosePlan('Premium', 'yearly')}
                 >
                   Start Premium
                 </Button>
