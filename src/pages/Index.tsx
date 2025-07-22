@@ -224,7 +224,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
   const monthlyPlans = [
     {
       name: "Basic",
-      price: "5 Pi",
+      price: "10 Pi",
       features: [
         "Track up to 5 daily habits",
         "Manage up to 20 tasks", 
@@ -247,7 +247,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     },
     {
       name: "Pro",
-      price: "10 Pi",
+      price: "15 Pi",
       features: [
         "Everything in Basic",
         "Mood-based suggestions",
@@ -271,7 +271,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     },
     {
       name: "Premium",
-      price: "15 Pi",
+      price: "20 Pi",
       features: [
         "Everything in Pro", 
         "AI Personal Coach",
@@ -1165,7 +1165,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
               <div className="bg-white rounded-lg p-6 shadow-md text-center">
                 <div className="text-2xl font-bold text-blue-600 mb-2">Basic</div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">5 Pi/month</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">10 Pi/month</div>
                 <div className="text-gray-600 mb-4">Perfect for getting started</div>
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700"
@@ -1179,7 +1179,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   <Badge className="bg-indigo-600 text-white">Most Popular</Badge>
                 </div>
                 <div className="text-2xl font-bold text-indigo-600 mb-2">Pro</div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">10 Pi/month</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">15 Pi/month</div>
                 <div className="text-gray-600 mb-4">Advanced features & AI coaching</div>
                 <Button 
                   className="w-full bg-indigo-600 hover:bg-indigo-700"
@@ -1190,7 +1190,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
               </div>
               <div className="bg-white rounded-lg p-6 shadow-md text-center">
                 <div className="text-2xl font-bold text-purple-600 mb-2">Premium</div>
-                <div className="text-3xl font-bold text-gray-900 mb-2">15 Pi/month</div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">20 Pi/month</div>
                 <div className="text-gray-600 mb-4">Ultimate AI coaching experience</div>
                 <Button 
                   className="w-full bg-purple-600 hover:bg-purple-700"
@@ -1233,7 +1233,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   <CardContent>
                     <CardDescription>{feature.description}</CardDescription>
                     <div className="mt-4">
-                      <Badge className="bg-blue-100 text-blue-800">5 Pi/month</Badge>
+                      <Badge className="bg-blue-100 text-blue-800">10 Pi/month</Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -1258,7 +1258,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   <CardContent>
                     <CardDescription>{feature.description}</CardDescription>
                     <div className="mt-4">
-                      <Badge className="bg-indigo-100 text-indigo-800">10 Pi/month</Badge>
+                      <Badge className="bg-indigo-100 text-indigo-800">15 Pi/month</Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -1283,7 +1283,7 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
                   <CardContent>
                     <CardDescription>{feature.description}</CardDescription>
                     <div className="mt-4">
-                      <Badge className="bg-purple-100 text-purple-800">15 Pi/month</Badge>
+                      <Badge className="bg-purple-100 text-purple-800">20 Pi/month</Badge>
                     </div>
                   </CardContent>
                 </Card>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileUtils } from '@/lib/mobile-utils';
@@ -143,14 +144,28 @@ const App = () => {
 
   // Initialize mobile utilities
   useEffect(() => {
-    const mobileUtils = new MobileUtils();
-    mobileUtils.initialize();
+    // MobileUtils is a singleton, so we just need to get the instance
+    // The initialization happens automatically in the constructor
+    const mobileUtils = MobileUtils.getInstance();
+    mobileUtils.addMobileClass();
+    mobileUtils.handleMobileErrors();
+    mobileUtils.optimizeForMobile();
   }, []);
 
   // Register service worker for PWA
   useEffect(() => {
     registerServiceWorker();
   }, []);
+
+  // Set loading to false after authentication is initialized
+  useEffect(() => {
+    // Set loading to false when auth state is determined
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [authUser]);
 
   // Handle payment completion
   const handlePaymentComplete = (plan: string) => {
@@ -216,6 +231,7 @@ const App = () => {
 
   return (
     <BrowserRouter basename={getBasePath()}>
+      <TooltipProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <Routes>
           <Route path="/" element={<Index />} />
@@ -309,6 +325,7 @@ const App = () => {
         
         <Toaster />
       </div>
+      </TooltipProvider>
     </BrowserRouter>
   );
 };
