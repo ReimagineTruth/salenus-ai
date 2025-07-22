@@ -118,12 +118,39 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({
       // Upgrade the plan
       await upgradePlan(selectedPlan as any);
 
+      // Show plan-specific success message
+      const planFeatures = {
+        'Basic': 'community challenges, cross-platform sync, and mobile access',
+        'Pro': 'mood tracking, advanced goals, smart reminders, and priority support',
+        'Premium': 'AI personal coach, advanced analytics, VIP support, and exclusive features'
+      };
+      
+      const features = planFeatures[selectedPlan as keyof typeof planFeatures] || 'premium features';
+
       // Show success message
       toast({
         title: "Upgrade Successful! 🎉",
-        description: `Welcome to ${selectedPlan}! You now have access to all premium features.`,
-        duration: 4000,
+        description: `Welcome to ${selectedPlan}! You now have access to ${features}.`,
+        duration: 6000,
       });
+
+      // Show additional welcome message
+      setTimeout(() => {
+        const welcomeMessages = {
+          'Basic': "🚀 Your Basic plan is now active! Try community challenges and cross-platform sync.",
+          'Pro': "⚡ Your Pro plan is now active! Explore mood tracking and advanced goal setting.",
+          'Premium': "👑 Your Premium plan is now active! Experience AI coaching and exclusive features."
+        };
+        
+        const message = welcomeMessages[selectedPlan as keyof typeof welcomeMessages] || 
+          "🎯 Explore your new features in the dashboard!";
+        
+        toast({
+          title: "Plan Activated!",
+          description: message,
+          duration: 5000,
+        });
+      }, 2000);
 
       // Close modal and immediately redirect to dashboard
       onClose();

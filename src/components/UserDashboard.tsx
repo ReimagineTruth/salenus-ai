@@ -306,18 +306,35 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       // Mock payment success - update user plan
       await upgradePlan(selectedPlan as UserPlan);
       
-      // Show success message with more details
+      // Show plan-specific success message
+      const planFeatures = {
+        'Basic': 'community challenges, cross-platform sync, and mobile access',
+        'Pro': 'mood tracking, advanced goals, smart reminders, and priority support',
+        'Premium': 'AI personal coach, advanced analytics, VIP support, and exclusive features'
+      };
+      
+      const features = planFeatures[selectedPlan as keyof typeof planFeatures] || 'premium features';
+      
       toast({
         title: "Upgrade Successful! 🎉",
-        description: `Welcome to the ${selectedPlan} plan! You now have access to all premium features including ${getPlanFeatures(selectedPlan as UserPlan).slice(0, 3).join(', ')} and more!`,
+        description: `Welcome to the ${selectedPlan} plan! You now have access to ${features}.`,
         duration: 6000,
       });
       
       // Show additional welcome message
       setTimeout(() => {
+        const welcomeMessages = {
+          'Basic': "🚀 Your Basic plan is now active! Try community challenges and cross-platform sync.",
+          'Pro': "⚡ Your Pro plan is now active! Explore mood tracking and advanced goal setting.",
+          'Premium': "👑 Your Premium plan is now active! Experience AI coaching and exclusive features."
+        };
+        
+        const message = welcomeMessages[selectedPlan as keyof typeof welcomeMessages] || 
+          "🎯 Explore your new features in the dashboard. Try the habit tracker, task manager, or community challenges!";
+        
         toast({
-          title: "🎯 Getting Started",
-          description: "Explore your new features in the dashboard. Try the habit tracker, task manager, or community challenges!",
+          title: "Plan Activated!",
+          description: message,
           duration: 5000,
         });
       }, 2000);

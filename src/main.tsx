@@ -8,6 +8,46 @@ mobileUtils.handleMobileErrors();
 mobileUtils.addMobileClass();
 mobileUtils.optimizeForMobile();
 
+// Pi Browser specific initialization
+if (mobileUtils.isPiBrowserDevice()) {
+  console.log('Pi Browser detected, applying Pi Browser specific fixes');
+  
+  // Force immediate repaint for Pi Browser
+  document.body.style.display = 'none';
+  document.body.offsetHeight; // Trigger reflow
+  document.body.style.display = '';
+  
+  // Add Pi Browser class
+  document.body.classList.add('pi-browser');
+  
+  // Force viewport fix for Pi Browser
+  const setPiBrowserVH = () => {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+    
+    // Ensure body and root have proper height and background
+    document.body.style.minHeight = '100vh';
+    document.body.style.minHeight = '100dvh';
+    document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    
+    const root = document.getElementById('root');
+    if (root) {
+      root.style.minHeight = '100vh';
+      root.style.minHeight = '100dvh';
+      root.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    }
+  };
+  
+  setPiBrowserVH();
+  window.addEventListener('resize', setPiBrowserVH);
+  window.addEventListener('orientationchange', setPiBrowserVH);
+  
+  // Force repaint multiple times to ensure rendering
+  setTimeout(setPiBrowserVH, 100);
+  setTimeout(setPiBrowserVH, 500);
+  setTimeout(setPiBrowserVH, 1000);
+}
+
 // Show mobile loading screen if on mobile
 if (mobileUtils.isMobileDevice()) {
   mobileUtils.showMobileLoadingScreen();

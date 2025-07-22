@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { UserDashboard } from "./components/UserDashboard";
@@ -29,6 +28,12 @@ import { PiLoginPage } from './pages/PiLoginPage';
 import { SimplifiedAuthFlow } from './components/SimplifiedAuthFlow';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import PlanBasedDashboard from './components/PlanBasedDashboard';
+import { PaymentModal } from './components/PaymentModal';
+import { PiAdModal } from './components/PiAdModal';
+import { Wiki } from './pages/Wiki';
+import { useIsMobile } from './hooks/use-mobile';
+import { MobileLayout } from './components/MobileLayout';
 
 const queryClient = new QueryClient();
 
@@ -87,23 +92,65 @@ class ErrorBoundary extends React.Component<
 }
 
 const App = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState('Free');
+  const { user, authUser, login, register, logout, upgradePlan } = useAuth();
+  const [selectedPlan, setSelectedPlan] = useState<string>('');
   const [pricingToggle, setPricingToggle] = useState('monthly');
-  const [isMobile, setIsMobile] = useState(false);
-  
-  // Use the Supabase auth hook - ALWAYS call this
-  const { user, authUser, isLoading: authLoading, login, register, logout, upgradePlan } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
-  // Check if device is mobile using mobile utils
+  // STEP 5: Set correct base path for subdomain routing
+  const getBasePath = () => {
+    const hostname = window.location.hostname;
+    if (hostname.includes('pinet.com')) {
+      // Extract subdomain path if needed
+      const pathParts = window.location.pathname.split('/');
+      if (pathParts.length > 1 && pathParts[1]) {
+        return `/${pathParts[1]}`;
+      }
+    }
+    return '';
+  };
+
+  // Pi Browser specific initialization
   useEffect(() => {
-    const mobileInfo = mobileUtils.getMobileInfo();
-    setIsMobile(mobileInfo.isMobile);
-    console.log('Device type:', mobileInfo.isMobile ? 'Mobile' : 'Desktop');
-    console.log('Pi Browser:', mobileInfo.isPiBrowser);
+    const isPiBrowser = navigator.userAgent.toLowerCase().includes('pi') || 
+                       navigator.userAgent.toLowerCase().includes('minepi');
+    
+    if (isPiBrowser) {
+      console.log('🌐 Pi Browser detected in App component');
+      
+      // Force repaint for Pi Browser
+      const forceRepaint = () => {
+        document.body.style.display = 'none';
+        document.body.offsetHeight;
+        document.body.style.display = '';
+      };
+      
+      forceRepaint();
+      
+      // Ensure proper viewport height
+      const setVH = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+      };
+      
+      setVH();
+      window.addEventListener('resize', setVH);
+      window.addEventListener('orientationchange', setVH);
+      
+      // Force multiple repaints to ensure rendering
+      setTimeout(forceRepaint, 100);
+      setTimeout(forceRepaint, 500);
+      setTimeout(forceRepaint, 1000);
+      
+      return () => {
+        window.removeEventListener('resize', setVH);
+        window.removeEventListener('orientationchange', setVH);
+      };
+    }
   }, []);
 
-  // Initialize app and check for existing user
   useEffect(() => {
     const initializeApp = () => {
       console.log('Initializing app...');
@@ -136,7 +183,7 @@ const App = () => {
     }, mobileUtils.isMobileDevice() ? 10000 : 8000); // Longer timeout for mobile devices
 
     // Initialize when auth state is determined
-    if (authLoading) {
+    if (isLoading) {
       // Still loading auth state
       return;
     } else {
@@ -147,15 +194,15 @@ const App = () => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [authUser, user, authLoading]);
+  }, [authUser, user, isLoading]);
 
   // Show mobile loading screen for mobile devices
-  if (isMobile && (isLoading || authLoading)) {
+  if (isMobile && (isLoading || isLoading)) {
     return <MobileLoadingScreen />;
   }
 
   // Show splash screen for desktop during loading
-  if (isLoading || authLoading) {
+  if (isLoading || isLoading) {
     return (
       <ErrorBoundary>
         <SEO title="Salenus AI — Loading..." description="Loading your Pi-powered AI coaching experience..." />
@@ -168,7 +215,7 @@ const App = () => {
   console.log('App - Current state:', {
     user,
     isLoading,
-    authLoading,
+    isLoading,
     selectedPlan,
     pricingToggle,
     isMobile
@@ -181,11 +228,11 @@ const App = () => {
     userPlan: user?.plan,
     userHasPaid: user?.hasPaid,
     isLoading,
-    authLoading
+    isLoading
   });
 
   // Add a simple loading state to prevent white screen
-  if (isLoading || authLoading) {
+  if (isLoading || isLoading) {
     return (
       <ErrorBoundary>
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
@@ -254,16 +301,16 @@ const App = () => {
       });
       window.location.href = '/auth';
     } else {
-      // User is already logged in, show upgrade modal
-      console.log('User logged in, showing upgrade options');
+      // User is already logged in, go directly to dashboard
+      console.log('User logged in, redirecting to dashboard');
       const userName = user?.name || user?.email?.split('@')[0] || authUser?.email?.split('@')[0] || 'User';
       toast({
-        title: "Ready to upgrade? 🚀",
-        description: `Great to see you're ready for more, ${userName}! Choose your plan...`,
+        title: "Welcome to your Dashboard! 🎉",
+        description: `Great to see you, ${userName}! Let's explore your features.`,
         duration: 4000,
       });
-      // Show upgrade modal instead of redirecting
-      window.location.href = '/upgrade';
+      // Go directly to dashboard instead of upgrade page
+      window.location.href = '/dashboard';
     }
   };
 
@@ -288,14 +335,38 @@ const App = () => {
       console.log('Updating user plan to:', selectedPlan);
       await upgradePlan(selectedPlan as any);
       
-      // Show success message
-      console.log(`Payment successful! Welcome to ${selectedPlan} plan.`);
+      // Show success message with plan-specific features
+      const planFeatures = {
+        'Basic': 'community challenges, cross-platform sync, and mobile access',
+        'Pro': 'mood tracking, advanced goals, smart reminders, and priority support',
+        'Premium': 'AI personal coach, advanced analytics, VIP support, and exclusive features'
+      };
+      
+      const features = planFeatures[selectedPlan as keyof typeof planFeatures] || 'premium features';
       
       toast({
         title: "Payment Successful! 🎉",
-        description: `Welcome to the ${selectedPlan} plan! You now have access to all premium features.`,
-        duration: 4000,
+        description: `Welcome to the ${selectedPlan} plan! You now have access to ${features}.`,
+        duration: 6000,
       });
+      
+      // Show plan-specific welcome message
+      setTimeout(() => {
+        const welcomeMessages = {
+          'Basic': "🚀 Your Basic plan is now active! Try community challenges and cross-platform sync.",
+          'Pro': "⚡ Your Pro plan is now active! Explore mood tracking and advanced goal setting.",
+          'Premium': "👑 Your Premium plan is now active! Experience AI coaching and exclusive features."
+        };
+        
+        const message = welcomeMessages[selectedPlan as keyof typeof welcomeMessages] || 
+          "🎉 Your plan is now active! Explore your new features.";
+        
+        toast({
+          title: "Plan Activated!",
+          description: message,
+          duration: 5000,
+        });
+      }, 2000);
       
       // Force redirect to dashboard with longer delay
       setTimeout(() => {
@@ -311,7 +382,7 @@ const App = () => {
             window.location.replace('/dashboard');
           }
         }, 1000);
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
       console.error('Payment error:', error);
@@ -367,8 +438,8 @@ const App = () => {
           <SEO title="Salenus AI — Pi-Powered AI Personal Coach" description="Transform your life with Salenus AI, the first Pi-powered AI coach designed exclusively for the Pi Network ecosystem." />
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-          <Routes>
+              <BrowserRouter basename={getBasePath()}>
+      <Routes>
             {/* Main landing page */}
             <Route path="/" element={
               <Index 
@@ -497,43 +568,20 @@ const App = () => {
             } />
             
             {/* Dashboard */}
-            <Route path="/dashboard/*" element={
-              (() => {
-                console.log('Dashboard route accessed - User:', user);
-                return user ? (
-                  <ErrorBoundary fallback={
-                    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
-                        <h1 className="text-2xl font-bold text-red-600 mb-4">Dashboard Error</h1>
-                        <p className="text-gray-600 mb-4">There was an error loading the dashboard. Please try refreshing the page.</p>
-                        <button 
-                          onClick={() => window.location.reload()}
-                          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                        >
-                          Refresh Page
-                        </button>
-                      </div>
-                    </div>
-                  }>
-                    <UserDashboard 
-                      user={user} 
-                      onLogout={handleLogout}
-                      onUpgrade={(plan) => {
-                        setSelectedPlan(plan);
-                        // Use mock payment - redirect to dashboard
-                        toast({
-                          title: "Plan Upgraded! 🎉",
-                          description: `Your plan has been upgraded to ${plan}. Welcome to premium features!`,
-                          duration: 4000,
-                        });
-                        window.location.href = '/dashboard';
-                      }}
-                    />
-                  </ErrorBoundary>
-                ) : (
-                  <Navigate to="/" replace />
-                );
-              })()
+            <Route path="/dashboard" element={
+              user ? (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50">
+                  <PlanBasedDashboard 
+                    user={user} 
+                    onUpgrade={(plan) => {
+                      setSelectedPlan(plan);
+                      window.location.href = '/upgrade';
+                    }}
+                  />
+                </div>
+              ) : (
+                <Navigate to="/" replace />
+              )
             } />
             
             {/* Home dashboard */}
@@ -638,7 +686,7 @@ const App = () => {
                       <h3 className="font-semibold">Authentication State:</h3>
                       <p>User: {user ? 'Logged in' : 'Not logged in'}</p>
                       <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
-                      <p>Auth Loading: {authLoading ? 'Yes' : 'No'}</p>
+                      <p>Auth Loading: {isLoading ? 'Yes' : 'No'}</p>
                     </div>
                     
                     {user && (
@@ -675,7 +723,7 @@ const App = () => {
                       <button 
                         onClick={() => {
                           console.log('Test: Current user state:', user);
-                          console.log('Test: Auth loading:', authLoading);
+                          console.log('Test: Auth loading:', isLoading);
                           console.log('Test: App loading:', isLoading);
                         }}
                         className="w-full bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"

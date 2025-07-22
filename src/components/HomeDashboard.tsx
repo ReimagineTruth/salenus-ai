@@ -256,11 +256,39 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ user, onLogout, on
     try {
       await upgradePlan(selectedPlan);
       setPaymentOpen(false);
+      
+      // Show plan-specific success message
+      const planFeatures = {
+        'Basic': 'community challenges, cross-platform sync, and mobile access',
+        'Pro': 'mood tracking, advanced goals, smart reminders, and priority support',
+        'Premium': 'AI personal coach, advanced analytics, VIP support, and exclusive features'
+      };
+      
+      const features = planFeatures[selectedPlan as keyof typeof planFeatures] || 'premium features';
+      
       toast({
         title: "Plan Upgraded! 🎉",
-        description: `Successfully upgraded to ${selectedPlan} plan. Welcome to premium features!`,
-        duration: 4000,
+        description: `Successfully upgraded to ${selectedPlan} plan. You now have access to ${features}!`,
+        duration: 6000,
       });
+      
+      // Show additional welcome message
+      setTimeout(() => {
+        const welcomeMessages = {
+          'Basic': "🚀 Your Basic plan is now active! Try community challenges and cross-platform sync.",
+          'Pro': "⚡ Your Pro plan is now active! Explore mood tracking and advanced goal setting.",
+          'Premium': "👑 Your Premium plan is now active! Experience AI coaching and exclusive features."
+        };
+        
+        const message = welcomeMessages[selectedPlan as keyof typeof welcomeMessages] || 
+          "🎯 Explore your new features in the dashboard!";
+        
+        toast({
+          title: "Plan Activated!",
+          description: message,
+          duration: 5000,
+        });
+      }, 2000);
       
       // Immediately redirect to dashboard after successful upgrade
       setTimeout(() => {

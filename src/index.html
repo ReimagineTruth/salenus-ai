@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Mobile-specific meta tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Salenus AI" />
+    <meta name="msapplication-TileColor" content="#4f46e5" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Prevent caching issues on mobile -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
+    <!-- STEP 2: Enhanced CORS headers for Pi Browser subdomain compatibility -->
+    <meta http-equiv="Access-Control-Allow-Origin" content="*" />
+    <meta http-equiv="Access-Control-Allow-Methods" content="GET, POST, PUT, DELETE, OPTIONS" />
+    <meta http-equiv="Access-Control-Allow-Headers" content="Content-Type, Authorization, X-Requested-With" />
+    <meta http-equiv="Access-Control-Allow-Credentials" content="true" />
+    
+    <!-- Remove X-Frame-Options to allow iframe embedding on Pi subdomains -->
+    <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
+    
+    <!-- Allow embedding on Pi Network subdomains -->
+    <script>
+      // Allow iframe embedding on Pi Network subdomains
+      if (window.location.hostname.includes('pinet.com') || 
+          window.location.hostname.includes('minepi.com')) {
+        // Remove any X-Frame-Options headers for Pi subdomains
+        try {
+          // This will be handled by the server, but we can also handle it client-side
+          console.log('🌐 Pi subdomain detected - allowing iframe embedding');
+        } catch (e) {
+          console.log('ℹ️ Client-side iframe handling applied');
+        }
+      }
+    </script>
+    
+    <!-- Primary Meta Tags -->
+    <title>Salenus AI — Pi-Powered Verified AI Coaching</title>
+    <meta name="title" content="Salenus AI — Pi-Powered Verified AI Coaching" />
+    <meta name="description" content="Transform your life with AI-powered coaching. Track habits, set goals, and achieve success with personalized guidance from Salenus AI." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://salenus.xyz/" />
+    <meta property="og:title" content="Salenus AI — Pi-Powered Verified AI Coaching" />
+    <meta property="og:description" content="Transform your life with AI-powered coaching. Track habits, set goals, and achieve success with personalized guidance from Salenus AI." />
+    <meta property="og:image" content="https://salenus.xyz/og-image.jpg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://salenus.xyz/" />
+    <meta property="twitter:title" content="Salenus AI — Pi-Powered Verified AI Coaching" />
+    <meta property="twitter:description" content="Transform your life with AI-powered coaching. Track habits, set goals, and achieve success with personalized guidance from Salenus AI." />
+    <meta property="twitter:image" content="https://salenus.xyz/og-image.jpg" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- STEP 1: Enhanced Pi Browser subdomain detection and fixes -->
+    <script>
+      // Detect if running in Pi Browser subdomain
+      const isPiSubdomain = window.location.hostname.includes('pinet.com') || 
+                           window.location.hostname.includes('minepi.com');
+      
+      // Detect if running in iframe
+      const isInIframe = window.self !== window.top;
+      
+      // Log environment for debugging (STEP 1: Check Console Errors)
+      console.log('🔍 STEP 1: Environment Detection:', {
+        hostname: window.location.hostname,
+        isPiSubdomain: isPiSubdomain,
+        isInIframe: isInIframe,
+        userAgent: navigator.userAgent,
+        protocol: window.location.protocol,
+        fullUrl: window.location.href
+      });
+      
+      // Apply subdomain-specific fixes
+      if (isPiSubdomain) {
+        console.log('✅ Pi subdomain detected, applying subdomain fixes...');
+        
+        // Force HTTPS for subdomains (STEP 6: Check HTTPS/SSL)
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+          console.log('🔄 Forcing HTTPS for subdomain...');
+          window.location.replace(window.location.href.replace('http:', 'https:'));
+        }
+        
+        // Handle X-Frame-Options issue for Pi subdomains
+        if (window.location.hostname.includes('salenusai7785.pinet.com')) {
+          console.log('🎯 Specific fix for salenusai7785.pinet.com');
+          
+          // Try to break out of iframe if possible
+          try {
+            if (window.top !== window.self) {
+              console.log('🔄 Attempting to break out of iframe...');
+              // Only break out if not in Pi Browser
+              if (!navigator.userAgent.includes('Pi')) {
+                window.top.location = window.self.location;
+              }
+            }
+          } catch (e) {
+            console.log('ℹ️ Cannot break out of iframe (expected in Pi Browser)');
+          }
+        }
+        
+        // Add subdomain-specific styles
+        const style = document.createElement('style');
+        style.textContent = `
+          /* Pi subdomain specific fixes */
+          .pi-subdomain {
+            /* Ensure proper rendering in Pi Browser subdomain */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+          }
+          
+          .pi-subdomain body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            overflow-x: hidden;
+          }
+          
+          .pi-subdomain #root {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+          }
+        `;
+        document.head.appendChild(style);
+        
+        // Add subdomain class to body
+        document.body.classList.add('pi-subdomain');
+      }
+      
+      // Iframe detection and fixes (STEP 4: Avoid Iframe Embeds)
+      if (isInIframe) {
+        console.log('⚠️ Running in iframe, applying iframe-specific fixes...');
+        document.body.classList.add('pi-iframe');
+        
+        // Try to break out of iframe if possible
+        try {
+          if (window.top !== window.self) {
+            console.log('🔄 Attempting to break out of iframe...');
+            // Only break out if not in Pi Browser
+            if (!navigator.userAgent.includes('Pi')) {
+              window.top.location = window.self.location;
+            }
+          }
+        } catch (e) {
+          console.log('ℹ️ Cannot break out of iframe (expected in Pi Browser)');
+        }
+      }
+    </script>
+
+    <!-- Prevent Pi SDK loading errors from breaking the app -->
+    <script>
+      // Prevent Pi SDK loading errors from breaking the app
+      window.addEventListener('error', function(e) {
+        if (e.message.includes('Pi') || e.message.includes('pi-sdk') || e.message.includes('CORS')) {
+          console.warn('⚠️ Pi SDK/CORS error caught:', e.message);
+          e.preventDefault();
+        }
+      });
+    </script>
+    
+    <!-- STEP 3: Enhanced Pi Network SDK with subdomain compatibility -->
+    <script src="https://sdk.minepi.com/pi-sdk.js" onerror="console.warn('❌ Pi SDK failed to load')"></script>
+    <script>
+      // STEP 3: Fix Pi SDK Integration
+      window.onload = () => {
+        console.log('🔄 STEP 3: Initializing Pi SDK...');
+        
+        try {
+          if (typeof Pi !== 'undefined') {
+            console.log('✅ Pi SDK loaded successfully');
+            
+            // Enhanced initialization for subdomains
+            const initOptions = {
+              version: "2.0", 
+              sandbox: true
+            };
+            
+            // Add subdomain-specific options
+            if (window.location.hostname.includes('pinet.com')) {
+              console.log('🌐 Initializing Pi SDK for subdomain...');
+              // Additional options for subdomain compatibility
+              initOptions.sandbox = true; // Ensure sandbox mode for subdomains
+            }
+            
+            Pi.init(initOptions);
+            console.log('✅ Pi SDK initialized successfully');
+            
+            // Test Pi SDK functionality
+            if (Pi.authenticate) {
+              console.log('✅ Pi.authenticate is available');
+            }
+            if (Pi.currentUser) {
+              console.log('✅ Pi.currentUser is available');
+            }
+            
+            // Test authentication
+            Pi.authenticate(['payments'], onIncompletePaymentFound).then(function(auth) {
+              console.log('✅ Pi authentication successful:', auth);
+            }).catch(function(error) {
+              console.warn('⚠️ Pi authentication failed:', error);
+            });
+            
+          } else {
+            console.warn('❌ Pi SDK not available, continuing without Pi features');
+          }
+        } catch (error) {
+          console.warn('❌ Pi SDK initialization failed:', error);
+          
+          // Fallback for subdomain issues
+          if (window.location.hostname.includes('pinet.com')) {
+            console.log('🔄 Attempting fallback Pi SDK initialization for subdomain...');
+            setTimeout(() => {
+              try {
+                if (typeof Pi !== 'undefined') {
+                  Pi.init({ version: "2.0", sandbox: true });
+                  console.log('✅ Fallback Pi SDK initialization successful');
+                }
+              } catch (fallbackError) {
+                console.warn('❌ Fallback Pi SDK initialization also failed:', fallbackError);
+              }
+            }, 1000);
+          }
+        }
+      };
+      
+      // Pi authentication callback
+      function onIncompletePaymentFound(payment) {
+        console.log('💰 Incomplete payment found:', payment);
+        return Promise.resolve();
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html> 

@@ -475,9 +475,9 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
     console.log('Index handleChoosePlan called with:', { planName, user, hasPaid });
     
     if (user) {
-      // User is logged in, show upgrade modal
-      console.log('User logged in, showing upgrade options');
-      navigate('/upgrade');
+      // User is logged in, go directly to dashboard
+      console.log('User logged in, redirecting to dashboard');
+      navigate('/dashboard');
     } else {
       // User is not logged in, redirect to quick signup
       console.log('User not logged in, redirecting to quick signup');
@@ -488,15 +488,12 @@ const Index: React.FC<IndexProps> = ({ user, selectedPlan, hasPaid, onChoosePlan
 
   const handleGetStarted = (planName: string) => {
     if (user) {
-      if (hasPaid) {
-        // User has paid, they can access the dashboard
-        navigate('/dashboard');
-      } else {
-        // User is logged in but hasn't paid, show upgrade options
-        navigate('/upgrade');
-      }
+      // User is logged in, go directly to dashboard
+      console.log('User logged in, redirecting to dashboard');
+      navigate('/dashboard');
     } else {
       // User is not logged in, redirect to quick signup
+      console.log('User not logged in, redirecting to quick signup');
       navigate('/signup');
     }
   };
